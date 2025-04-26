@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "build": {
+    "env": {
+      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x"
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://neurasec-api.vercel.app",
+    "JWT_SECRET": "@jwt_secret"
+  },
+  "functions": {
+    "src/app/**/*": {
+      "memory": 512,
+      "maxDuration": 30
+    }
+  }
+} 

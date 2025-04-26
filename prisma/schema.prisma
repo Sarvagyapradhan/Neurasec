@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+  output        = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   Int       @id @default(autoincrement())
+  email                String    @unique
+  username             String    @unique
+  password             String    // Hashed password
+  full_name            String?   // Added from previous migration
+  role                 String    @default("user") // Added role
+  is_active            Boolean   @default(true)  // Added is_active
+  is_verified          Boolean   @default(false) // Added is_verified
+  emailVerified        DateTime? // Timestamp when email was verified
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastLogin            DateTime?
+  resetPasswordToken   String?   @unique // Token for password reset
+  resetPasswordExpires DateTime? // Expiry time for the reset token
+  otps                 OTP[]     // Relation to OTPs
+  scans                Scan[]
+  reports              Report[]
+  leaderboard          LeaderboardEntry?
+  profile_picture      String?   // Added from previous migration
+  google_id            String?   @unique // Added from previous migration
+
+  @@map("users") // Ensure it maps to the 'users' table
+}
+
+model OTP {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(255) // Link to user's email
+  code      String   // The 6-digit OTP code
+  type      OTPType  // Type of OTP (REGISTRATION, LOGIN, PASSWORD_RESET)
+  expiresAt DateTime // When the OTP expires
+  usedAt    DateTime? // When the OTP was used
+  createdAt DateTime @default(now())
+  userId    Int?     // Changed to Int to match User.id
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([email, type])
+  @@map("otps")
+}
+
+enum OTPType {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
+}
+
+model Scan {
+  id        Int      @id @default(autoincrement())
+  userId    Int      // Changed to Int
+  type      String // "email" | "url" | "file" | "custom"
+  input     String
+  result    String
+  score     Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("scans")
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  userId    Int      // Changed to Int
+  details   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("reports")
+}
+
+model LeaderboardEntry {
+  id     Int    @id @default(autoincrement())
+  userId Int    @unique
+  points Int
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("leaderboard_entries")
+}
+
+model Reward {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String
+  points      Int
+
+  @@map("rewards")
+}

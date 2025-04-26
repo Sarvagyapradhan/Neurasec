@@ -1,0 +1,63 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+/tests
+/backend/tests
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+neurasec.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
+.env
+.env.production
+backend/.env
+backend/.env.local
+backend/.env.production
+
+# API keys and credentials
+api_keys.json
+all_api_keys.md
+project_credentials.txt
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+__pycache__/
+*.py[cod]
+venv/
+.pytest_cache/
+backend/app/utils/otp_logs.txt
+
+# Logs
+logs
+*.log
+
+# Security
+*.key
+*.cert
+*.pem 
