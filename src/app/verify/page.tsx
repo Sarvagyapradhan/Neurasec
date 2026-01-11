@@ -245,7 +245,7 @@ function VerifyPage() {
               <CardTitle className="text-slate-100">Security Verification</CardTitle>
             </div>
             <CardDescription className="text-slate-400">
-              We&apos;ve sent a verification code to {formData.email || "your email"}
+              We've sent a verification code to {formData.email || "your email"}
             </CardDescription>
           </CardHeader>
           
@@ -278,7 +278,7 @@ function VerifyPage() {
             </form>
             
             <div className="mt-6 text-center">
-              <p className="text-sm text-slate-400 mb-2">Didn&apos;t receive a code?</p>
+              <p className="text-sm text-slate-400 mb-2">Didn't receive a code?</p>
               <div className="flex flex-col items-center gap-2">
                 <Button
                   variant="ghost"

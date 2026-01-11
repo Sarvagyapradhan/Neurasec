@@ -19,8 +19,8 @@ export const Spotlight = ({
   }, []);
 
   useEffect(() => {
-    if (isMounted && divRef.current) {
-      const div = divRef.current;
+    const div = divRef.current;
+    if (isMounted && div) {
       const handleMouseMove = (e: MouseEvent) => {
         const rect = div.getBoundingClientRect();
 
@@ -65,4 +65,4 @@ export const Spotlight = ({
       {children}
     </div>
   );
-}; 
+};
