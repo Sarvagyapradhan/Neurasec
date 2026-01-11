@@ -231,7 +231,7 @@ export default function Navbar() {
               <DropdownMenuContent align="end" className="w-[240px] bg-slate-900/95 border-slate-800/50">
                 <DropdownMenuLabel className="text-slate-400">My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-slate-800/50" />
-                <Link href="/profile">
+                <Link href={user?.id ? `/profile/${encodeURIComponent(String(user.id))}` : "/profile"}>
                   <DropdownMenuItem className="group">
                     <User className="mr-2 h-4 w-4 text-blue-400" />
                     <span className="text-slate-100 group-hover:text-blue-400 transition-colors">Profile</span>

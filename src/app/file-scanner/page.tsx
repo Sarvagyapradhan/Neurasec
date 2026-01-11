@@ -7,6 +7,7 @@ import { FileCheck, AlertCircle, ShieldX, Upload, Shield, File, X } from 'lucide
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 // Define the type for the analysis result
 type AnalysisResultType = {
@@ -55,44 +56,44 @@ export default function FileScannerPage() {
     setFile(null);
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!file) return;
     
     setIsAnalyzing(true);
-    
-    // Simulate upload progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      setUploadProgress(progress);
-      if (progress >= 100) {
-        clearInterval(interval);
-        
-        // Mock result for demo purposes
-        setTimeout(() => {
-          const mockResult: AnalysisResultType = {
-            verdict: Math.random() > 0.7 ? 'Safe' : Math.random() > 0.5 ? 'Suspicious' : 'Malicious',
-            score: Math.random(),
-            explanation: "This file has been analyzed using our AI security model. We've scanned for malware signatures, suspicious code patterns, and potentially harmful content.",
-            detectionDetails: Math.random() > 0.7 ? [
-              {
-                type: "Potential Malware",
-                severity: "Medium",
-                description: "The file contains patterns associated with known malware families."
-              },
-              {
-                type: "Suspicious Code",
-                severity: "Low",
-                description: "Obfuscated code sections detected that may hide malicious intent."
-              }
-            ] : undefined
-          };
-          
-          setAnalysisResult(mockResult);
-          setIsAnalyzing(false);
-        }, 1000);
+
+    setUploadProgress(10);
+    setAnalysisResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      setUploadProgress(35);
+      const response = await fetch("/api/scan-file", {
+        method: "POST",
+        body: formData,
+      });
+      setUploadProgress(75);
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to scan file");
       }
-    }, 100);
+
+      setAnalysisResult(data as AnalysisResultType);
+      setUploadProgress(100);
+    } catch (err) {
+      console.error("File scan error:", err);
+      toast.error((err as Error).message || "Failed to scan file");
+      setAnalysisResult({
+        verdict: "Suspicious",
+        score: 0.3,
+        explanation: "We could not complete file analysis right now. Please try again.",
+      });
+      setUploadProgress(0);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   return (
@@ -263,7 +264,7 @@ export default function FileScannerPage() {
                     
                     <div className="mt-4">
                       <h3 className="text-xl font-medium text-slate-100">Threat Score</h3>
-                      <div className="mt-2 relative h-3 w-64 mx-auto bg-slate-800 rounded-full overflow-hidden">
+                      <div className="mt-2 relative h-3 w-full max-w-xs mx-auto bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
                           className={`
                             absolute top-0 left-0 h-full rounded-full

@@ -25,6 +25,22 @@ export default function SimpleNavbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Lock page scroll when mobile menu is open (prevents iOS/Android scroll weirdness)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const prev = document.body.style.overflow;
+    if (menuOpen) document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen]);
+
+  // Close menus on route change
+  useEffect(() => {
+    closeMenus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -48,12 +64,13 @@ export default function SimpleNavbar() {
   ];
 
   return (
-    <nav 
-      className={`navbar transition-all duration-300 ${
-        scrolled ? "py-2 bg-slate-950/90 shadow-md" : "py-4"
-      }`}
-    >
-      <div className="container mx-auto flex items-center justify-between">
+    <>
+      <nav 
+        className={`navbar transition-all duration-300 ${
+          scrolled ? "bg-slate-950/90 shadow-md" : ""
+        } pt-[env(safe-area-inset-top)]`}
+      >
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 text-2xl font-bold text-blue-400">
           <Shield className="h-6 w-6" />
           <span className="bg-gradient-to-r from-blue-400 to-sky-500 bg-clip-text text-transparent">NeuraSec</span>
@@ -62,21 +79,6 @@ export default function SimpleNavbar() {
         <div className="hidden md:flex items-center gap-6">
           {user ? (
             <>
-              <Link 
-                href="/dashboard" 
-                className={`relative ${pathname === "/dashboard" ? "text-blue-400" : "text-slate-400 hover:text-slate-200"}`}
-              >
-                Dashboard
-                {pathname === "/dashboard" && (
-                  <motion.div 
-                    layoutId="navbar-indicator"
-                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-400" 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                )}
-              </Link>
               <div className="relative">
                 <button 
                   onClick={() => setFeaturesMenuOpen(!featuresMenuOpen)}
@@ -88,8 +90,6 @@ export default function SimpleNavbar() {
                       ? "text-blue-400" 
                       : "text-slate-400 hover:text-slate-200"
                   }`}
-                  onMouseEnter={() => setFeaturesMenuOpen(true)}
-                  onMouseLeave={() => setFeaturesMenuOpen(false)}
                 >
                   Features
                   <ChevronDown className={`h-4 w-4 transition-transform ${featuresMenuOpen ? "rotate-180" : ""}`} />
@@ -114,8 +114,6 @@ export default function SimpleNavbar() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -5 }}
                       transition={{ duration: 0.2 }}
-                      onMouseEnter={() => setFeaturesMenuOpen(true)}
-                      onMouseLeave={() => setFeaturesMenuOpen(false)}
                     >
                       <Link 
                         href="/features" 
@@ -257,175 +255,211 @@ export default function SimpleNavbar() {
         </div>
 
         <button 
-          className="md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+          className={`md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800 ${
+            menuOpen ? "invisible" : ""
+          }`}
           onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
+          aria-label="Open menu"
+          aria-hidden={menuOpen}
+          tabIndex={menuOpen ? -1 : 0}
         >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <Menu className="h-5 w-5" />
         </button>
-        
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div 
-              className="md:hidden fixed inset-0 top-16 bg-slate-950/98 z-40 overflow-auto"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <motion.div 
-                className="container mx-auto py-6 px-4 flex flex-col gap-5"
-                initial={{ y: -20 }}
-                animate={{ y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-              >
-                {user ? (
-                  <>
-                    <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-lg border border-slate-800">
-                      <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/50">
-                        <User className="h-5 w-5 text-blue-400" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-slate-200 font-medium">{user?.username || user?.email || "User"}</span>
-                        <span className="text-sm text-slate-500">Member</span>
-                      </div>
-                    </div>
-                    
-                    <Link 
-                      href="/dashboard" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/dashboard" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      Dashboard
-                    </Link>
-                    <div className="border-t border-slate-800 my-1"></div>
-                    <div className="flex items-center justify-between text-slate-200 px-3">
-                      <span className="font-medium">Security Tools</span>
-                    </div>
-                    {securityTools.map((tool, index) => (
-                      <Link 
-                        key={index}
-                        href={tool.path} 
-                        className={`flex items-center gap-2 p-3 rounded-lg ${
-                          pathname === tool.path 
-                            ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                            : "text-slate-400 hover:bg-slate-900"
-                        }`}
-                        onClick={closeMenus}
-                      >
-                        <tool.icon className="h-5 w-5" />
-                        {tool.name}
-                      </Link>
-                    ))}
-                    <Link 
-                      href="/features" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/features" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      <Layers className="h-5 w-5" />
-                      All Features
-                    </Link>
-                    <div className="border-t border-slate-800 my-1"></div>
-                    <Link 
-                      href="/rewards" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/rewards" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      Rewards
-                    </Link>
-                    <Link 
-                      href="/leaderboard" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/leaderboard" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      Leaderboard
-                    </Link>
-                    <Link 
-                      href="/profile" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/profile" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      <User className="h-5 w-5" />
-                      Profile
-                    </Link>
-                    <Link 
-                      href="/settings" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/settings" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      <Settings className="h-5 w-5" />
-                      Settings
-                    </Link>
-                    <div className="border-t border-slate-800 my-2"></div>
-                    <button 
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 p-3 text-left text-red-400 hover:bg-slate-900 rounded-lg"
-                    >
-                      <LogOut className="h-5 w-5" />
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link 
-                      href="/features" 
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        pathname === "/features" 
-                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
-                          : "text-slate-400 hover:bg-slate-900"
-                      }`}
-                      onClick={closeMenus}
-                    >
-                      <Layers className="h-5 w-5" />
-                      Features
-                    </Link>
-                    <div className="border-t border-slate-800 my-1"></div>
-                    <Link 
-                      href="/login" 
-                      className="flex items-center gap-2 p-4 text-slate-400 hover:bg-slate-900 rounded-lg justify-center"
-                      onClick={closeMenus}
-                    >
-                      Log in
-                    </Link>
-                    <Link 
-                      href="/register" 
-                      className="btn btn-primary p-4 text-center flex items-center justify-center gap-2"
-                      onClick={closeMenus}
-                    >
-                      Sign up
-                      <Shield className="h-5 w-5" />
-                    </Link>
-                  </>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-    </nav>
+      </nav>
+
+      {/* Mobile overlay menu MUST be outside <nav> to avoid backdrop-filter containing block issues on iOS */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            className="md:hidden fixed inset-0 z-[80]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            aria-modal="true"
+            role="dialog"
+          >
+            {/* Backdrop */}
+            <button
+              aria-label="Close menu"
+              className="absolute inset-0 w-full h-full bg-black/60"
+              onClick={closeMenus}
+              type="button"
+            />
+
+            {/* Drawer */}
+            <motion.aside
+              className="absolute left-0 top-0 h-[100svh] w-[86%] max-w-sm bg-slate-950 border-r border-slate-800 shadow-2xl pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] overflow-y-auto"
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "tween", duration: 0.2 }}
+            >
+              <div className="px-4 py-4 border-b border-slate-800 flex items-center justify-between">
+                <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 text-lg font-bold text-blue-400" onClick={closeMenus}>
+                  <Shield className="h-5 w-5" />
+                  <span className="bg-gradient-to-r from-blue-400 to-sky-500 bg-clip-text text-transparent">NeuraSec</span>
+                </Link>
+                <button
+                  type="button"
+                  className="flex items-center justify-center h-10 w-10 rounded-full bg-slate-800/50 text-slate-300 hover:bg-slate-800"
+                  onClick={closeMenus}
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="w-full py-4 px-4 flex flex-col gap-5">
+              {user ? (
+                <>
+                  <div className="flex items-center gap-3 p-4 bg-slate-900/50 rounded-lg border border-slate-800">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/50">
+                      <User className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-slate-200 font-medium truncate">{user?.username || user?.email || "User"}</span>
+                      <span className="text-sm text-slate-500">Member</span>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-slate-800 my-1"></div>
+                  <div className="flex items-center justify-between text-slate-200 px-3">
+                    <span className="font-medium">Security Tools</span>
+                  </div>
+                  {securityTools.map((tool, index) => (
+                    <Link 
+                      key={index}
+                      href={tool.path} 
+                      className={`flex items-center gap-2 p-3 rounded-lg ${
+                        pathname === tool.path 
+                          ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                          : "text-slate-400 hover:bg-slate-900"
+                      }`}
+                      onClick={closeMenus}
+                    >
+                      <tool.icon className="h-5 w-5" />
+                      {tool.name}
+                    </Link>
+                  ))}
+                  <Link 
+                    href="/features" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/features" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    <Layers className="h-5 w-5" />
+                    All Features
+                  </Link>
+                  <div className="border-t border-slate-800 my-1"></div>
+                  <Link 
+                    href="/rewards" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/rewards" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    Rewards
+                  </Link>
+                  <Link 
+                    href="/leaderboard" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/leaderboard" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    Leaderboard
+                  </Link>
+                  <Link 
+                    href="/profile" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/profile" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    <User className="h-5 w-5" />
+                    Profile
+                  </Link>
+                  <Link 
+                    href="/scans" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/scans" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    <Lock className="h-5 w-5" />
+                    Scan History
+                  </Link>
+                  <Link 
+                    href="/settings" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/settings" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    <Settings className="h-5 w-5" />
+                    Settings
+                  </Link>
+                  <div className="border-t border-slate-800 my-2"></div>
+                  <button 
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 p-3 text-left text-red-400 hover:bg-slate-900 rounded-lg"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link 
+                    href="/features" 
+                    className={`flex items-center gap-2 p-3 rounded-lg ${
+                      pathname === "/features" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                        : "text-slate-400 hover:bg-slate-900"
+                    }`}
+                    onClick={closeMenus}
+                  >
+                    <Layers className="h-5 w-5" />
+                    Features
+                  </Link>
+                  <div className="border-t border-slate-800 my-1"></div>
+                  <Link 
+                    href="/login" 
+                    className="flex items-center gap-2 p-4 text-slate-400 hover:bg-slate-900 rounded-lg justify-center"
+                    onClick={closeMenus}
+                  >
+                    Log in
+                  </Link>
+                  <Link 
+                    href="/register" 
+                    className="btn btn-primary p-4 text-center flex items-center justify-center gap-2"
+                    onClick={closeMenus}
+                  >
+                    Sign up
+                    <Shield className="h-5 w-5" />
+                  </Link>
+                </>
+              )}
+              </div>
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 } 

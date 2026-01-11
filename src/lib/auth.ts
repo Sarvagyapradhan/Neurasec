@@ -13,7 +13,7 @@ export interface JWTPayload {
 }
 
 export const generateToken = (payload: JWTPayload): string => {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || process.env.SECRET_KEY;
   if (!secret) {
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
@@ -21,7 +21,7 @@ export const generateToken = (payload: JWTPayload): string => {
 };
 
 export const verifyToken = async (token: string): Promise<JWTPayload> => {
-  const secret = process.env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET || process.env.SECRET_KEY;
   if (!secret) {
     console.error('JWT_SECRET missing during verification');
     throw new Error('JWT_SECRET is not defined in environment variables');
@@ -59,8 +59,12 @@ export const getUserById = async (userId: string | number) => {
       email: true,
       username: true,
       role: true,
+      full_name: true,
+      profile_picture: true,
+      is_verified: true,
       createdAt: true,
       updatedAt: true,
+      lastLogin: true,
     },
   });
   return user;

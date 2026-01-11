@@ -152,15 +152,15 @@ export default function Home() {
             >
               <div className="flex items-center gap-1">
                 <Shield className="h-4 w-4" />
-                <span>99.9% Accuracy</span>
+                <span>Security-first design</span>
               </div>
               <div className="flex items-center gap-1">
                 <UserCheck className="h-4 w-4" />
-                <span>10,000+ Users</span>
+                <span>Personal scan history</span>
               </div>
               <div className="flex items-center gap-1">
                 <Globe className="h-4 w-4" />
-                <span>24/7 Protection</span>
+                <span>Real-time URL + file checks</span>
               </div>
             </motion.div>
           </div>

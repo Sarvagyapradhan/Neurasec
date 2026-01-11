@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import jwt from 'jsonwebtoken';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,26 +30,10 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Try to decode the token without verification for debugging
-    try {
-      const decodedDebug = jwt.decode(token);
-      console.log("Token payload:", decodedDebug);
-      
-      // Check if token is expired
-      const exp = (decodedDebug as any)?.exp;
-      if (exp) {
-        const now = Math.floor(Date.now() / 1000);
-        console.log(`Token expiration: ${new Date(exp * 1000).toISOString()}, now: ${new Date(now * 1000).toISOString()}`);
-        console.log(`Token ${exp < now ? 'is expired' : 'is valid'}`);
-      }
-    } catch (decodeError) {
-      console.log("Error decoding token:", decodeError);
-    }
-    
     console.log("[me] Verifying user token");
-    const user = await verifyToken(token);
+    const decoded = await verifyToken(token);
 
-    if (!user) {
+    if (!decoded) {
       console.log("[me] Invalid or expired token");
       return NextResponse.json(
         { error: "Invalid or expired token" },
@@ -59,12 +41,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("[me] User authenticated successfully:", user.email);
-    return NextResponse.json({
-      id: user.userId,
-      email: user.email,
-      username: user.username
+    const userId = typeof decoded.userId === "string" ? parseInt(decoded.userId, 10) : decoded.userId;
+    if (!Number.isFinite(userId)) {
+      return NextResponse.json({ error: "Invalid user id in token" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId as number },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        full_name: true,
+        profile_picture: true,
+        is_verified: true,
+        createdAt: true,
+        lastLogin: true,
+      },
     });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    console.log("[me] User authenticated successfully:", user.email);
+    return NextResponse.json(user);
   } catch (error) {
     console.error("[me] Profile fetch error:", error);
     return NextResponse.json(

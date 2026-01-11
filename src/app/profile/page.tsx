@@ -1,11 +1,27 @@
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+"use client";
 
-// Add static generation configuration
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { useAuth } from "@/components/AuthProvider";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function ProfilePage() {
-  // Server-side redirect to login
-  redirect('/login');
-} 
+export default function ProfilePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      router.replace(`/login?returnUrl=${encodeURIComponent("/profile")}`);
+      return;
+    }
+
+    router.replace(`/profile/${encodeURIComponent(String(user.id))}`);
+  }, [loading, router, user]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center p-6">
+      <div className="text-slate-300">Loading profile…</div>
+    </div>
+  );
+}
