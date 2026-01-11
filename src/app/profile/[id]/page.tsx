@@ -2,6 +2,7 @@
 
 import { Shield, CheckCircle } from "lucide-react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { useAuth } from "@/components/AuthProvider";
 import { Card } from "@/components/ui/card";
@@ -41,8 +42,6 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center space-y-4">
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-violet-500 flex items-center justify-center">
-import Image from "next/image";
-// ...
               {extendedUser.profile_picture ? (
                 <div className="relative w-24 h-24 rounded-full overflow-hidden">
                     <Image
