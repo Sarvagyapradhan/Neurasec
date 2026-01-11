@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { prisma } from './prisma'; // Use singleton instance
 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient(); // Removed local instantiation
+
 
 export interface JWTPayload {
   userId: string | number;
@@ -21,13 +23,15 @@ export const generateToken = (payload: JWTPayload): string => {
 export const verifyToken = async (token: string): Promise<JWTPayload> => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
+    console.error('JWT_SECRET missing during verification');
     throw new Error('JWT_SECRET is not defined in environment variables');
   }
   
   try {
     const decoded = jwt.verify(token, secret) as JWTPayload;
     return decoded;
-  } catch (error) {
+  } catch (error: any) {
+    console.error('JWT Verification Error:', error.message);
     throw new Error('Invalid token');
   }
 };

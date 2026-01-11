@@ -189,12 +189,28 @@ export default function DashboardPage() {
     const hasToken = !!getCookie("auth_token") || !!localStorage.getItem("auth_token");
     console.log("Token found:", hasToken);
     
+    // Redirect if we're not loading, not authenticated, and have no token
     if (!loading) {
       setAuthChecked(true);
       if (!isAuthenticated && !hasToken) {
         router.push('/login');
       }
     }
+
+    // Safety timeout for dashboard loading specifically
+    const timer = setTimeout(() => {
+        if (loading) {
+            console.warn("Dashboard loading timed out, forcing check");
+            if (!isAuthenticated && !hasToken) {
+                router.push('/login');
+            } else {
+                // If we have token/auth but loading stuck, show content
+                setAuthChecked(true); 
+            }
+        }
+    }, 4000);
+
+    return () => clearTimeout(timer);
   }, [isAuthenticated, loading, router]);
 
   // Add Loading State

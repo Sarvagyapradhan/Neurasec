@@ -68,15 +68,23 @@ export default function RegisterPage() {
     try {
       setLoading(true);
       
-      const response = await axios.post("/api/auth/register/", {
+      // Use relative path to call Next.js API route
+      const response = await axios.post("/api/auth/register", {
         email: formData.email,
         username: formData.username,
         password: formData.password,
         password_confirm: formData.confirmPassword,
         full_name: formData.full_name || null
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      if (response.data.message && response.data.message.includes("verify your email")) {
+      if (response.data.message && (
+          response.data.message.toLowerCase().includes("verify") || 
+          response.data.message.toLowerCase().includes("registration successful")
+      )) {
         sessionStorage.setItem("verificationEmail", formData.email);
         
         toast.success("Registration Initiated", {
@@ -94,9 +102,34 @@ export default function RegisterPage() {
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      const errorDetail = error.response?.data?.error || 
-                        error.response?.data?.detail || 
-                        "An unexpected error occurred";
+      
+      // Detailed error logging
+      if (error.response) {
+        console.error("Error Status:", error.response.status);
+        console.error("Error Data:", error.response.data);
+      }
+      
+      let errorDetail = "An unexpected error occurred";
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+           errorDetail = error.response.data;
+        } else if (error.response.data.error) {
+           errorDetail = error.response.data.error;
+        } else if (error.response.data.detail) {
+           errorDetail = error.response.data.detail;
+        } else {
+           // Handle field-specific errors (e.g., { email: ["Invalid email"] })
+           const firstField = Object.keys(error.response.data)[0];
+           const firstError = error.response.data[firstField];
+           if (Array.isArray(firstError)) {
+             errorDetail = `${firstField}: ${firstError[0]}`;
+           } else {
+             errorDetail = JSON.stringify(error.response.data);
+           }
+        }
+      }
+      
       toast.error("Registration failed", {
         description: errorDetail
       });

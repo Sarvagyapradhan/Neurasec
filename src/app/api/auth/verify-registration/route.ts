@@ -1,55 +1,83 @@
 import { NextRequest, NextResponse } from "next/server";
-import axios from "axios";
+import { PrismaClient } from "@prisma/client";
+import { generateToken } from "@/lib/auth";
+import { prisma } from '@/lib/prisma'; // Use singleton instance
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// const prisma = new PrismaClient(); // Removed local instantiation
+
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('Verify request body:', body);
     
-    // Try to get email from the request body first
-    let email = body.email;
+    const { email, otp } = body;
     
-    // If no email in body, try session storage
-    if (!email) {
-      const session = request.cookies.get('session')?.value;
-      email = session ? JSON.parse(session).verificationEmail : null;
-    }
-    
-    // If still no email, return error
-    if (!email) {
+    if (!email || !otp) {
       return NextResponse.json(
-        { detail: "Email is required for verification" },
+        { detail: "Email and OTP are required" },
         { status: 400 }
       );
     }
     
-    // Send verification request to backend
-    const response = await axios.post(`${API_URL}/api/auth/verify-registration/`, {
-      email,
-      otp: body.otp
+    // Find the latest valid OTP for this user
+    const validOTP = await prisma.oTP.findFirst({
+        where: {
+            email: email,
+            code: otp,
+            type: 'REGISTRATION',
+            expiresAt: {
+                gt: new Date()
+            },
+            usedAt: null
+        },
+        orderBy: {
+            createdAt: 'desc'
+        }
     });
-    
-    // If verification is successful, clear the session storage
-    if (response.data.access_token) {
-      const session = request.cookies.get('session')?.value;
-      if (session) {
-        const sessionData = JSON.parse(session || '{}');
-        delete sessionData.verificationEmail;
-        request.cookies.set('session', JSON.stringify(sessionData));
-      }
+
+    if (!validOTP) {
+        console.log(`[Verify] Invalid or expired OTP for ${email}: ${otp}`);
+        return NextResponse.json(
+            { detail: "Invalid or expired OTP" },
+            { status: 400 }
+        );
     }
+
+    // Mark OTP as used
+    await prisma.oTP.update({
+        where: { id: validOTP.id },
+        data: { usedAt: new Date() }
+    });
+
+    // Verify user
+    const user = await prisma.user.update({
+        where: { email },
+        data: { 
+            is_verified: true,
+            emailVerified: new Date()
+        }
+    });
+
+    // Generate token
+    const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        username: user.username
+    });
     
     return NextResponse.json({
-      ...response.data,
-      success: !!response.data.access_token
+      access_token: token,
+      message: "Registration verified successfully",
+      success: true
     });
+
   } catch (error: any) {
-    console.error("Verify registration API error:", error.response?.data || error.message);
+    console.error("Verify registration API error:", error);
     
     return NextResponse.json(
-      { detail: error.response?.data?.detail || "Registration verification failed" },
-      { status: error.response?.status || 500 }
+      { detail: "Registration verification failed" },
+      { status: 500 }
     );
   }
 } 

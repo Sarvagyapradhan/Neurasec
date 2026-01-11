@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import axios from 'axios';
+import { verifyToken, getUserById } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   let token: string | undefined | null = null;
@@ -30,38 +30,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, reason: "No token provided" }, { status: 401 });
     }
     
-    console.log("[check-token] Forwarding token to backend /me endpoint for validation...");
-    
-    // Call the backend /me endpoint instead of local verifyToken
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    console.log("[check-token] Verifying token locally...");
     
     try {
-        const response = await axios.get(`${apiUrl}/api/auth/me/`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Verify token locally
+        const decoded = await verifyToken(token);
         
-        // If backend returns user data, token is valid
-        console.log("[check-token] Backend /me validation successful for:", response.data?.email);
+        // Fetch user from DB to ensure they still exist and get latest data
+        const user = await getUserById(decoded.userId);
+        
+        if (!user) {
+            console.error("[check-token] User not found for valid token ID:", decoded.userId);
+            return NextResponse.json({ valid: false, reason: "User no longer exists" }, { status: 401 });
+        }
+
+        console.log("[check-token] Token verified for user:", user.email);
+        
         return NextResponse.json({
             valid: true,
-            // Pass through user data received from backend
-            user: response.data 
+            user: {
+                id: user.id,
+                email: user.email,
+                username: user.username,
+                role: user.role
+            }
         });
 
-    } catch (backendError: any) {
-        // If backend returns an error (e.g., 401), the token is invalid
-        console.error("[check-token] Backend /me validation failed:", backendError.response?.data || backendError.message);
-        const reason = backendError.response?.data?.detail || "Backend validation failed";
+    } catch (verifyError: any) {
+        console.error("[check-token] Token verification failed:", verifyError.message);
         return NextResponse.json(
-            { valid: false, reason: reason }, 
-            { status: backendError.response?.status || 401 } // Use backend status or default to 401
+            { valid: false, reason: "Invalid or expired token" }, 
+            { status: 401 }
         );
     }
 
   } catch (error: any) {
-    // Catch errors in token extraction or unexpected issues
     console.error("[check-token] Unexpected Error:", error);
     return NextResponse.json(
         { valid: false, reason: "Server error during token check" }, 

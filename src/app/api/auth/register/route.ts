@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import axios from 'axios';
+import { hashPassword, getUserByEmail, getUserById } from '@/lib/auth';
+import { PrismaClient } from '@prisma/client';
+import { sendOTP } from '@/lib/email'; // We need to implement this
+import { prisma } from '@/lib/prisma'; // Use singleton instance
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// const prisma = new PrismaClient(); // Removed local instantiation
+
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -20,34 +24,52 @@ export async function POST(request: NextRequest) {
     // Validate request body
     const validatedData = registerSchema.parse(body);
     
-    // Send request to Django backend
-    console.log('Attempting backend registration...');
-    try {
-      const response = await axios.post(`${API_URL}/api/auth/register/`, {
-        email: validatedData.email,
-        username: validatedData.username,
-        password: validatedData.password,
-        password_confirm: validatedData.password_confirm,
-        full_name: validatedData.full_name
-      }, {
-          headers: {
-              'Content-Type': 'application/json',
-          }
-      });
-      
-      console.log('Backend registration response status:', response.status);
-      
-      // Return the successful response
-      return NextResponse.json(response.data, { status: response.status });
-
-    } catch (backendError: any) {
-      // Handle errors from the backend API call
-      console.error('Backend registration error:', backendError.response?.data || backendError.message);
-      return NextResponse.json(
-        { error: backendError.response?.data?.detail || 'Registration failed' },
-        { status: backendError.response?.status || 500 }
-      );
+    if (validatedData.password !== validatedData.password_confirm) {
+        return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
     }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            OR: [
+                { email: validatedData.email },
+                { username: validatedData.username }
+            ]
+        }
+    });
+
+    if (existingUser) {
+        return NextResponse.json({ error: "User with this email or username already exists" }, { status: 400 });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(validatedData.password);
+
+    // Create user
+    const newUser = await prisma.user.create({
+        data: {
+            email: validatedData.email,
+            username: validatedData.username,
+            password: hashedPassword,
+            full_name: validatedData.full_name,
+            is_verified: false // User needs to verify email
+        }
+    });
+
+    // Generate and send OTP for verification
+    try {
+        await sendOTP(newUser.email, 'REGISTRATION');
+        console.log(`OTP sent to ${newUser.email}`);
+    } catch (emailError) {
+        console.error("Failed to send OTP:", emailError);
+        // Continue registration but warn? Or fail? 
+        // Typically better to succeed creation but let user know email might be delayed
+    }
+
+    return NextResponse.json({ 
+        message: "Registration successful. Please check your email to verify your account.",
+        user_id: newUser.id 
+    }, { status: 201 });
 
   } catch (error: any) {
     // Handle validation errors or other unexpected errors in this route
@@ -59,7 +81,7 @@ export async function POST(request: NextRequest) {
         );
     }
     
-    console.error('Overall Register API error:', error);
+    console.error('Register API error:', error);
     return NextResponse.json(
       { error: 'Failed to process registration request' },
       { status: 500 }

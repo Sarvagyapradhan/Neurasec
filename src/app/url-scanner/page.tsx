@@ -366,6 +366,11 @@ export default function URLScannerPage() {
                   className="bg-slate-900/50 border-slate-700/50 text-slate-300 placeholder:text-slate-500"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isAnalyzing && url.trim()) {
+                      handleAnalyze();
+                    }
+                  }}
                 />
                 <p className="text-xs text-slate-500 italic">Example: https://website.com</p>
                 {error && <p className="text-xs text-red-400">{error}</p>}
@@ -510,9 +515,33 @@ export default function URLScannerPage() {
                     )}
                   </div>
                   
-                  <div className="px-4 py-3 bg-slate-800/50 rounded-lg text-sm text-slate-300 mx-auto max-w-md">
-                    {analysisResult.explanation}
-                    
+                  <div className="px-4 py-3 bg-slate-800/50 rounded-lg text-sm text-slate-300 mx-auto max-w-md text-left">
+                    <p className="mb-2 font-medium text-slate-200">Analysis Summary:</p>
+                    <p className="mb-4">{analysisResult.explanation}</p>
+
+                    {/* Detailed Analysis Section */}
+                    {analysisResult.vendorResults && Object.keys(analysisResult.vendorResults).length > 0 && (
+                      <div className="border-t border-slate-700/50 pt-3 mt-3">
+                        <h4 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2">Vendor Analysis</h4>
+                        <div className="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                          {Object.entries(analysisResult.vendorResults).map(([vendor, result], idx) => (
+                             <div key={idx} className="flex justify-between items-center text-xs">
+                               <span className="text-slate-400">{vendor}</span>
+                               <span className={`px-1.5 py-0.5 rounded ${
+                                 result === 'malicious' || result === 'phishing' || result === 'malware' 
+                                   ? 'bg-red-500/10 text-red-400' 
+                                   : result === 'suspicious' 
+                                     ? 'bg-yellow-500/10 text-yellow-400' 
+                                     : 'bg-green-500/10 text-green-400'
+                               }`}>
+                                 {result}
+                               </span>
+                             </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Show polling indicator or manual scan button as appropriate */}
                     {analysisResult.details?.some((d: {category: string, status: string, description: string}) => 
                       d.category === "Analysis Status" && 

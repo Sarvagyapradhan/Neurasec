@@ -88,24 +88,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           // First check if token is valid
           console.log("[AuthProvider] Checking token validity");
-          const checkResponse = await fetch(`/api/auth/check-token?token=${encodeURIComponent(authToken)}`, {
-            headers: {
-              "Authorization": `Bearer ${authToken}`
+          
+          // Create a timeout for the fetch request
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          try {
+            const checkResponse = await fetch(`/api/auth/check-token?token=${encodeURIComponent(authToken)}`, {
+                headers: {
+                "Authorization": `Bearer ${authToken}`
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            const checkResult = await checkResponse.json();
+            
+            if (!checkResponse.ok || !checkResult.valid) {
+                console.error("[AuthProvider] Token validation failed:", checkResult);
+                
+                // Auto-cleanup on validation failure
+                console.warn("[AuthProvider] Clearing invalid token");
+                localStorage.removeItem("auth_token");
+                deleteCookie("auth_token");
+                setToken(null);
+                setUser(null);
+                
+                // Redirect to login if on protected page
+                if (typeof window !== 'undefined' && 
+                    (window.location.pathname.startsWith('/dashboard') || 
+                    window.location.pathname.startsWith('/admin'))) {
+                router.push('/login');
+                }
+                
+                // Stop execution, don't throw an error that crashes the app
+                setLoading(false);
+                return;
             }
-          });
-          
-          const checkResult = await checkResponse.json();
-          
-          if (!checkResponse.ok || !checkResult.valid) {
-            console.error("[AuthProvider] Token validation failed:", checkResult);
-            throw new Error(`Token validation failed: ${checkResult.reason || "Invalid token"}`);
-          }
-          
-          // If token is valid and we have user data, use it
-          if (checkResult.user) {
-            console.log("[AuthProvider] Setting user from token validation");
-            setUser(checkResult.user);
-            return; // Exit early since we have the user data
+            
+            // If token is valid and we have user data, use it
+            if (checkResult.user) {
+                console.log("[AuthProvider] Setting user from token validation");
+                setUser(checkResult.user);
+                return; // Exit early since we have the user data
+            }
+          } catch (fetchError: any) {
+              clearTimeout(timeoutId);
+              if (fetchError.name === 'AbortError') {
+                  console.error("[AuthProvider] Token validation request timed out");
+              } else {
+                  console.error("[AuthProvider] Token validation request failed:", fetchError);
+              }
+              // Don't clear token immediately on network error, but stop loading
+              setLoading(false);
+              return;
           }
           
           // If no user in check result, fetch user profile
@@ -207,7 +243,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', handleStorageChange);
-      return () => window.removeEventListener('storage', handleStorageChange);
+      
+      // Safety timeout: ensure loading state doesn't get stuck indefinitely
+      const safetyTimeout = setTimeout(() => {
+        if (loading) {
+            console.warn("[AuthProvider] Safety timeout triggered - forcing loading state to false");
+            setLoading(false);
+        }
+      }, 5000); // 5 seconds max loading time
+      
+      return () => {
+          window.removeEventListener('storage', handleStorageChange);
+          clearTimeout(safetyTimeout);
+      };
     }
   }, []);
 

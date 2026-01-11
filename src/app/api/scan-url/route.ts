@@ -1,12 +1,80 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Pool } from 'pg';
+import { detectHomographAttack } from '../analyze-url/homograph';
 
 // Cache duration in hours (how long a result is considered "fresh")
 const CACHE_DURATION_HOURS = 6;
 
 // Add debug mode to see detailed connection info & queries
-const DEBUG_MODE = true;
+const DEBUG_MODE = process.env.NODE_ENV !== 'production';
+
+// List of trusted domains that should be considered safe
+const TRUSTED_DOMAINS = [
+  // Search engines
+  'google.com', 'www.google.com',
+  'bing.com', 'www.bing.com',
+  'yahoo.com', 'www.yahoo.com',
+  'duckduckgo.com', 'www.duckduckgo.com',
+  
+  // Social media & content
+  'facebook.com', 'www.facebook.com',
+  'twitter.com', 'www.twitter.com',
+  'instagram.com', 'www.instagram.com',
+  'linkedin.com', 'www.linkedin.com',
+  'youtube.com', 'www.youtube.com',
+  'reddit.com', 'www.reddit.com',
+  'pinterest.com', 'www.pinterest.com',
+  
+  // Tech companies
+  'microsoft.com', 'www.microsoft.com',
+  'apple.com', 'www.apple.com',
+  'amazon.com', 'www.amazon.com',
+  'netflix.com', 'www.netflix.com',
+  'openai.com', 'www.openai.com',
+  'chatgpt.com', 'www.chatgpt.com',
+  
+  // Other common services
+  'github.com', 'www.github.com',
+  'stackoverflow.com', 'www.stackoverflow.com',
+  'medium.com', 'www.medium.com',
+  'wikipedia.org', 'www.wikipedia.org',
+  'outlook.com', 'www.outlook.com',
+  'gmail.com', 'www.gmail.com',
+  'paypal.com', 'www.paypal.com',
+  'dropbox.com', 'www.dropbox.com',
+  'zoom.us', 'www.zoom.us',
+  'slack.com', 'www.slack.com',
+  'github.io',
+  'vercel.app',
+  'cloudflare.com', 'www.cloudflare.com',
+  'shopify.com', 'www.shopify.com',
+  'wordpress.com', 'www.wordpress.com',
+  'ebay.com', 'www.ebay.com'
+];
+
+// Helper function to check if a URL is from a trusted domain
+function isUrlFromTrustedDomain(parsedUrl: URL): boolean {
+  // Get the hostname and remove 'www.' if present
+  const normalizedHostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
+  
+  // Direct match (with or without www)
+  if (TRUSTED_DOMAINS.includes(parsedUrl.hostname) || 
+      TRUSTED_DOMAINS.includes(normalizedHostname)) {
+    return true;
+  }
+  
+  // Check for subdomain of trusted domain
+  for (const domain of TRUSTED_DOMAINS) {
+    const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+    if (normalizedHostname === normalizedDomain || 
+        normalizedHostname.endsWith(`.${normalizedDomain}`)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 // Define the structure for the analysis result, including new fields
 type AnalysisResultType = {
@@ -68,6 +136,10 @@ function getPool() {
         // Never log actual password, just indicate it exists
         password: password ? '******' : undefined
       });
+      // Explicitly log connection string construction to catch overrides
+      console.log(`Connection Host: ${host}`);
+      // Log env source if possible (checking NODE_ENV)
+      console.log(`Environment: ${process.env.NODE_ENV}`);
     }
 
     try {
@@ -169,7 +241,8 @@ async function ensureTablesExist(): Promise<boolean> {
           user_comment TEXT,
           submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           user_ip TEXT,
-          feedback_count INTEGER NOT NULL DEFAULT 1
+          feedback_count INTEGER NOT NULL DEFAULT 1,
+          UNIQUE(url, user_verdict)
         );
         
         CREATE INDEX IF NOT EXISTS idx_url_scan_feedback_url ON url_scan_feedback(url);
@@ -177,6 +250,32 @@ async function ensureTablesExist(): Promise<boolean> {
       
       await db.query(createFeedbackTableQuery);
       console.log('Successfully created url_scan_feedback table');
+    }
+
+    // Create History/Dataset table for ML Training
+    // This table stores PERMANENT records of scans to build a dataset
+    const historyTableCheck = await db.query(`
+      SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'url_scan_history') as exists
+    `);
+
+    if (!historyTableCheck.rows[0].exists) {
+      console.log('url_scan_history table does not exist, creating it for ML dataset...');
+      const createHistoryTableQuery = `
+        CREATE TABLE IF NOT EXISTS url_scan_history (
+          id SERIAL PRIMARY KEY,
+          url TEXT NOT NULL,
+          verdict TEXT NOT NULL,
+          score REAL,
+          vendor_results JSONB, -- Critical for ML labels
+          details JSONB,        -- Contains specific threat types
+          scanned_at TIMESTAMPTZ DEFAULT NOW(),
+          source TEXT           -- 'VirusTotal', 'TrustedDomain', 'LocalHeuristic'
+        );
+        CREATE INDEX IF NOT EXISTS idx_url_scan_history_url ON url_scan_history(url);
+        CREATE INDEX IF NOT EXISTS idx_url_scan_history_verdict ON url_scan_history(verdict);
+      `;
+      await db.query(createHistoryTableQuery);
+      console.log('Successfully created url_scan_history table');
     }
     
     console.log('All required tables exist');
@@ -225,6 +324,33 @@ async function getFromCache(url: string): Promise<AnalysisResultType | null> {
   } catch (error) {
     console.error('Error checking cache:', error);
     return null; // Proceed without cache on error
+  }
+}
+
+// Function to save scan result to the permanent ML dataset
+async function saveToDataset(result: AnalysisResultType, source: string) {
+  try {
+    const db = getPool();
+    if (!db) return;
+
+    // We simply append to the history table. 
+    // This allows tracking how a URL's status changes over time.
+    await db.query(`
+      INSERT INTO url_scan_history (
+        url, verdict, score, vendor_results, details, source, scanned_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `, [
+      result.url,
+      result.verdict,
+      result.score,
+      JSON.stringify(result.vendorResults || {}),
+      JSON.stringify(result.details || []),
+      source
+    ]);
+    
+    console.log(`[Dataset] Saved ${result.url} to permanent history`);
+  } catch (err) {
+    console.error('[Dataset] Failed to save history:', err);
   }
 }
 
@@ -406,7 +532,11 @@ async function checkCommunityFeedback(url: string): Promise<{
         hasFeedback: true,
         majorityVerdict,
         totalFeedbacks,
-        feedbackStats: statsResult.rows
+        // Convert counts to numbers to ensure frontend compatibility
+        feedbackStats: statsResult.rows.map(row => ({
+          user_verdict: row.user_verdict,
+          count: parseInt(row.count)
+        }))
       };
     }
     
@@ -429,6 +559,21 @@ function validateAndNormalizeUrl(inputUrl: string): { url: string | null; isLoca
     // Validate URL format
     const urlObj = new URL(urlToProcess);
     
+    // Normalize: Force HTTPS if it's HTTP (unless localhost)
+    // This ensures http://google.com and https://google.com share the same cache entry
+    if (urlObj.protocol === 'http:' && !urlToProcess.includes('localhost') && !urlToProcess.includes('127.0.0.1')) {
+      urlObj.protocol = 'https:';
+    }
+
+    // Normalize: Remove trailing slash for root paths to ensure consistency
+    // e.g. https://google.com/ -> https://google.com
+    if (urlObj.pathname === '/') {
+        // We can't actually remove the slash from the object, but we can handle the string
+        // standard .toString() adds it back.
+        // For consistency, let's stick to the standard .toString() which DOES include the slash.
+        // The key is that we apply this transformation consistently.
+    }
+    
     // Check if it's a localhost URL
     const isLocalhost = urlObj.hostname === 'localhost' || 
                         urlObj.hostname === '127.0.0.1' || 
@@ -449,8 +594,67 @@ function validateAndNormalizeUrl(inputUrl: string): { url: string | null; isLoca
   }
 }
 
+// Cleanup function to remove expired cache entries
+async function cleanupExpiredCache() {
+  const db = getPool();
+  if (!db) return;
+  
+  try {
+    // Delete entries expired more than 24 hours ago to keep DB light
+    // We keep them for a bit after expiry just in case, but 24h buffer is plenty
+    const result = await db.query(`
+      DELETE FROM url_scan_cache 
+      WHERE expires_at < NOW() - INTERVAL '1 day'
+    `);
+    
+    if (result.rowCount && result.rowCount > 0) {
+      console.log(`[Cache Cleanup] Removed ${result.rowCount} expired entries`);
+    }
+  } catch (error) {
+    console.error('[Cache Cleanup] Failed:', error);
+  }
+}
+
+// In-memory rate limiter (Map<IP, {count, startTime}>)
+const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10; // 10 scans per minute per IP
+
 // Modify the start of the POST handler to check database tables
 export async function POST(request: Request) {
+  // Trigger background cleanup with 5% probability
+  // This avoids running it on every request but keeps DB clean enough
+  if (Math.random() < 0.05) {
+    cleanupExpiredCache().catch(e => console.error(e));
+  }
+
+  // --- RATE LIMITING ---
+  const forwarded = request.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  
+  if (ip !== 'unknown' && ip !== '::1') {
+      const now = Date.now();
+      const userLimit = rateLimitMap.get(ip) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+      
+      if (now > userLimit.resetTime) {
+          // Reset window
+          userLimit.count = 1;
+          userLimit.resetTime = now + RATE_LIMIT_WINDOW;
+      } else {
+          userLimit.count++;
+      }
+      
+      rateLimitMap.set(ip, userLimit);
+      
+      if (userLimit.count > MAX_REQUESTS_PER_WINDOW) {
+          console.warn(`[Rate Limit] IP ${ip} exceeded limit`);
+          return NextResponse.json({ 
+              error: 'Too many requests. Please wait a minute before scanning again.' 
+          }, { status: 429 });
+      }
+  }
+  // ---------------------
+
   const apiKey = process.env.VIRUSTOTAL_API_KEY;
   if (!apiKey) {
     console.error('VIRUSTOTAL_API_KEY is not set');
@@ -471,6 +675,30 @@ export async function POST(request: Request) {
 
   try {
     const { url: inputUrl } = await request.json();
+
+    // --- RATE LIMITING ---
+    // Simple in-memory rate limiting to prevent abuse
+    // For a production app with multiple replicas, use Redis (e.g., Upstash)
+    // Here we use a rough IP-based check using the DB to track "recent scans"
+    
+    // Get client IP
+    const forwarded = request.headers.get('x-forwarded-for');
+    const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+    
+    if (ip !== 'unknown') {
+        const db = getPool();
+        if (db) {
+            // Check scans from this IP in the last minute
+            // Note: We don't have an explicit scan log table, but we can query feedback or 
+            // create a lightweight 'scan_log' table. For now, since we don't want to create
+            // another table just for this, we will rely on the fact that expensive operations
+            // (VT API calls) are what we want to limit.
+            //
+            // A better approach without new tables: Use a static map in memory (reset on server restart)
+            // It works per-instance (good enough for now).
+        }
+    }
+    // ---------------------
 
     if (!inputUrl || typeof inputUrl !== 'string') {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
@@ -508,16 +736,53 @@ export async function POST(request: Request) {
       }, { status: 200 }); // Use 200 for better UX rather than 400
     }
 
-    console.log(`Processing URL scan request: ${url}`);
-
-    // 1. Check cache first
+    // 1. Check cache first (for ALL URLs, including trusted ones)
     const cachedResult = await getFromCache(url);
     if (cachedResult) {
       console.log(`Returning cached result for: ${url}`);
       return NextResponse.json(cachedResult);
     }
 
-    // 2. Not in cache or expired, proceed with VirusTotal scan
+    // 2. Check if URL is from a trusted domain (only if not in cache)
+    try {
+      const parsedUrl = new URL(url);
+      if (isUrlFromTrustedDomain(parsedUrl)) {
+          console.log(`Trusted domain detected: ${url} - Returning safe verdict without scanning`);
+          
+          const trustedResult: AnalysisResultType = {
+            verdict: 'Safe',
+            score: 0, // 0 = Safe
+            url: url,
+            explanation: "This URL belongs to a trusted domain (e.g., popular search engines, social media, tech companies) and is considered safe.",
+            details: [
+              {
+                category: "Trusted Domain",
+                status: 'ok',
+                description: "This domain is in our list of verified safe domains."
+              }
+            ],
+            fromCache: false
+          };
+
+          // Save to database cache so it appears in your Supabase records
+          try {
+            await saveToCache(trustedResult);
+            // Also save to permanent dataset for ML training (Negative Sample)
+            await saveToDataset(trustedResult, 'TrustedDomain');
+            console.log('Saved trusted domain result to database');
+          } catch (err) {
+            console.error('Error saving trusted domain to database:', err);
+          }
+
+          return NextResponse.json(trustedResult);
+      }
+    } catch (e) {
+      console.error("Error checking trusted domain:", e);
+    }
+
+    console.log(`Processing URL scan request: ${url}`);
+
+    // 3. Not in cache or trusted, proceed with VirusTotal scan
     console.log(`No valid cache entry, scanning with VirusTotal: ${url}`);
     
     // Submit URL to VirusTotal for analysis
@@ -704,6 +969,8 @@ export async function POST(request: Request) {
         // Save to cache, but wait for completion to catch any errors
         try {
             await saveToCache(analysisResult);
+            // Also save to permanent dataset for ML training
+            await saveToDataset(analysisResult, 'VirusTotal');
             console.log('Successfully saved to cache');
         } catch (cacheError) {
             console.error('Failed to save to cache:', cacheError);
@@ -771,6 +1038,65 @@ function processVirusTotalReport(url: string, attributes: any, idForLink: string
       : null;
     const timesSubmitted = attributes.times_submitted || 0;
 
+    // --- LOCAL HEURISTICS & HOMOGRAPH CHECKS ---
+    // We combine VirusTotal results with our own local analysis to detect things VT might miss (e.g., brand new phishing sites)
+    
+    const localSuspiciousFeatures: string[] = [];
+    let localRiskScore = 0;
+    let homographDetected = false;
+
+    try {
+        const parsedUrl = new URL(url);
+        const domain = parsedUrl.hostname;
+
+        // 1. Homograph Attack Detection
+        // Need to pass TRUSTED_DOMAINS which are defined in the file scope
+        const homographResult = detectHomographAttack(domain, TRUSTED_DOMAINS);
+        
+        if (homographResult.isPotentialHomograph) {
+            homographDetected = true;
+            localRiskScore += 0.4; // Significant risk bump for potential homographs
+            homographResult.reasons.forEach(reason => {
+                localSuspiciousFeatures.push(`Homograph Warning: ${reason}`);
+            });
+            if (homographResult.similarTo) {
+                localSuspiciousFeatures.push(`This URL mimics a trusted domain: ${homographResult.similarTo}`);
+                localRiskScore += 0.3; // Extra penalty for impersonating a specific known domain
+            }
+        }
+
+        // 2. Suspicious URL Patterns
+        if (url.includes('login') || url.includes('signin') || url.includes('account') || url.includes('verify')) {
+             if (parsedUrl.pathname.length > 30) {
+                 localSuspiciousFeatures.push('Suspicious: Login/account page with unusually long URL path');
+                 localRiskScore += 0.1;
+             }
+        }
+        
+        // 3. IP Address Usage
+        // Regex to check if hostname is an IP address
+        if (/^(\d{1,3}\.){3}\d{1,3}$/.test(domain)) {
+            localSuspiciousFeatures.push('Suspicious: URL uses an IP address instead of a domain name');
+            localRiskScore += 0.2;
+        }
+
+        // 4. Unusual TLDs (simple check)
+        const parts = domain.split('.');
+        if (parts.length > 1) {
+            const tld = parts[parts.length - 1].toLowerCase();
+            const riskyTLDs = ['xyz', 'top', 'gq', 'work', 'date', 'click']; // Examples of commonly abused TLDs
+            if (riskyTLDs.includes(tld)) {
+                 localSuspiciousFeatures.push(`Suspicious: Uses a TLD (.${tld}) often associated with spam/phishing`);
+                 localRiskScore += 0.1;
+            }
+        }
+
+    } catch (e) {
+        console.error("Error during local heuristic analysis:", e);
+    }
+    // ---------------------------------------------
+
+
     console.log("Stats used:", JSON.stringify(stats, null, 2));
     console.log("Number of results entries:", Object.keys(results).length);
     console.log("Categories:", JSON.stringify(categories, null, 2));
@@ -807,13 +1133,30 @@ function processVirusTotalReport(url: string, attributes: any, idForLink: string
         explanation = "VirusTotal has no analysis data for this URL, or the analysis is still in progress.";
         console.warn("No significant scanner results or date info found for URL:", url);
     } else if (maliciousCount > 0) {
-        verdict = 'Malicious';
-        score = totalScanners > 0 ? Math.min(1, (maliciousCount * 1.0 + suspiciousCount * 0.5) / totalScanners) : 1.0;
-        explanation = `Detected as potentially malicious by ${maliciousCount} out of ${totalScanners} security vendors.`;
+        // Only classify as Malicious if there's consensus (e.g. > 1 vendor or > 10% of vendors)
+        // unless it's a known high-confidence vendor (not checking vendor names here for simplicity)
+        if (maliciousCount >= 2 || (totalScanners > 0 && maliciousCount / totalScanners > 0.05)) {
+            verdict = 'Malicious';
+            score = totalScanners > 0 ? Math.min(1, (maliciousCount * 1.0 + suspiciousCount * 0.5) / totalScanners) : 1.0;
+            explanation = `Detected as potentially malicious by ${maliciousCount} out of ${totalScanners} security vendors.`;
+        } else {
+            // Low confidence malicious detection (e.g. 1 vendor), treat as Suspicious
+            verdict = 'Suspicious';
+            score = 0.4;
+            explanation = `Flagged by ${maliciousCount} security vendor(s), but general consensus is safe. Exercise caution.`;
+        }
     } else if (suspiciousCount > 0) {
-        verdict = 'Suspicious';
-        score = totalScanners > 0 ? Math.min(1, (suspiciousCount * 0.5) / totalScanners) : 0.5;
-        explanation = `Detected as potentially suspicious by ${suspiciousCount} out of ${totalScanners} security vendors. Exercise caution.`;
+        // Only classify as Suspicious if significant count
+        if (suspiciousCount >= 3 || (totalScanners > 0 && suspiciousCount / totalScanners > 0.1)) {
+            verdict = 'Suspicious';
+            score = totalScanners > 0 ? Math.min(1, (suspiciousCount * 0.5) / totalScanners) : 0.5;
+            explanation = `Detected as potentially suspicious by ${suspiciousCount} out of ${totalScanners} security vendors. Exercise caution.`;
+        } else {
+             // Very few suspicious flags, likely false positives
+             verdict = 'Safe';
+             score = 0;
+             explanation = `Considered safe by the vast majority of vendors (${suspiciousCount} flags disregarded as likely false positives).`;
+        }
     } else if ((harmlessCount > 0 || undetectedCount > 0) && totalScanners > 0) {
         verdict = 'Safe';
         score = 0;
@@ -828,6 +1171,22 @@ function processVirusTotalReport(url: string, attributes: any, idForLink: string
         score = 0.1;
         explanation = `Analysis inconclusive (${maliciousCount} malicious, ${suspiciousCount} suspicious, ${harmlessCount} harmless, ${undetectedCount} undetected). Review full report.`;
         console.warn("Inconclusive analysis stats for URL:", url, JSON.stringify(stats));
+    }
+
+    // --- MERGE LOCAL HEURISTICS INTO VERDICT ---
+    
+    // Add local risk score to VT score
+    score += localRiskScore;
+    
+    // If local heuristics detected something serious, upgrade verdict
+    if (homographDetected && verdict === 'Safe') {
+        verdict = 'Suspicious'; // Upgrade from Safe to Suspicious at minimum for homographs
+        explanation = "Warning: This URL mimics a legitimate domain (Homograph Attack). " + explanation;
+    }
+    
+    if (localRiskScore > 0.5 && verdict === 'Safe') {
+         verdict = 'Suspicious';
+         explanation = "Suspicious URL patterns detected. " + explanation;
     }
 
     // Clamp score between 0 and 1
@@ -857,6 +1216,15 @@ function processVirusTotalReport(url: string, attributes: any, idForLink: string
             description: `${suspiciousCount}/${safeTotalScanners} vendors flagged as suspicious.` 
         },
     ];
+
+    // Add local heuristic findings to details
+    if (localSuspiciousFeatures.length > 0) {
+        details.push({
+            category: "Heuristic Analysis",
+            status: 'warning' as 'ok' | 'warning' | 'critical',
+            description: localSuspiciousFeatures.join('; ')
+        });
+    }
 
     // For non-empty category list, add to details
     if (categoryArray.length > 0) {

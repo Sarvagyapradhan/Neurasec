@@ -38,19 +38,6 @@ export default function LoginPage() {
       }
     }, [uiVisible]);
 
-    useEffect(() => {
-      // Reset error state when user starts typing
-      if (usernameOrEmail || password) {
-        if (errorType === 'username' && usernameOrEmail) {
-          setErrorType(null);
-          setError('');
-        } else if (errorType === 'password' && password) {
-          setErrorType(null);
-          setError('');
-        }
-      }
-    }, [usernameOrEmail, password, errorType]);
-
     const categorizeError = (errorMsg: string, status: number): 'username' | 'password' | 'general' => {
       const lowerError = errorMsg.toLowerCase();
       
@@ -87,7 +74,7 @@ export default function LoginPage() {
 
       try {
         console.log('Attempting login with:', usernameOrEmail);
-        const response = await fetch('/api/auth/login/', {
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -99,26 +86,59 @@ export default function LoginPage() {
         });
 
         console.log('Login response status:', response.status);
-        const data = await response.json();
-        console.log('Login response data:', data);
+        
+        let data;
+        try {
+            const text = await response.text();
+            console.log('Raw response text:', text);
+            data = text ? JSON.parse(text) : {};
+            console.log('Login response data:', data);
+        } catch (e) {
+            console.warn('Could not parse login response JSON', e);
+            data = {};
+        }
 
         if (!response.ok) {
-          console.error('Login failed:', data);
-          // Add better error handling for empty response
-          if (!data || Object.keys(data).length === 0) {
-            setErrorType('general');
-            setError('Login failed. Please check your connection and try again.');
-          } else {
-            const errorType = categorizeError(data.error, response.status);
-            setErrorType(errorType);
-            setError(data.error || 'Authentication failed');
-            setErrorDetail(data.detail || '');
+          
+          let errorMessage = 'Authentication failed';
+          let errorDetailMsg = '';
+          let type: 'username' | 'password' | 'general' = 'general';
+
+          // Fallback based on status code if data is empty or missing error field
+          if (!data || Object.keys(data).length === 0 || !data.error) {
+             if (response.status === 404) {
+                 errorMessage = 'Username or email does not exist';
+                 type = 'username';
+             } else if (response.status === 401) {
+                 errorMessage = 'Incorrect password';
+                 type = 'password';
+             } else {
+                 errorMessage = `Login failed (${response.status})`;
+             }
           }
+          
+          if (data && typeof data === 'object' && data.error) {
+            errorMessage = data.error;
+            errorDetailMsg = data.detail || '';
+            
+            // Determine error type based on status or message content
+            if (response.status === 404 || errorMessage.toLowerCase().includes('not exist')) {
+                type = 'username';
+            } else if (response.status === 401 || errorMessage.toLowerCase().includes('password')) {
+                type = 'password';
+            }
+          }
+
+          // Use console.log or warn to avoid triggering Next.js error overlay for expected auth errors
+          console.log('Login failed:', errorMessage, data);
+          setErrorType(type);
+          setError(errorMessage);
+          setErrorDetail(errorDetailMsg);
           
           toast({
             variant: "destructive",
             title: "Login failed",
-            description: data.error || 'Authentication failed',
+            description: errorMessage,
           });
         } else {
           // Success - token should be in the data
@@ -209,7 +229,13 @@ export default function LoginPage() {
                     placeholder="Enter your username or email"
                     type="text"
                     value={usernameOrEmail}
-                    onChange={(e) => setUsernameOrEmail(e.target.value)}
+                    onChange={(e) => {
+                      setUsernameOrEmail(e.target.value);
+                      if (errorType === 'username') {
+                        setErrorType(null);
+                        setError('');
+                      }
+                    }}
                     className={`${
                       errorType === 'username' 
                         ? 'border-red-500 focus-visible:ring-red-500' 
@@ -243,7 +269,13 @@ export default function LoginPage() {
                     placeholder="Enter your password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorType === 'password') {
+                        setErrorType(null);
+                        setError('');
+                      }
+                    }}
                     className={`${
                       errorType === 'password' 
                         ? 'border-red-500 focus-visible:ring-red-500' 
@@ -294,7 +326,7 @@ export default function LoginPage() {
           <CardFooter className="flex justify-center">
             <div className="text-sm text-slate-400">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-blue-400 hover:text-blue-300 hover:underline">
+              <Link href="/register" className="text-blue-400 hover:text-blue-300 hover:underline">
                 Sign up
               </Link>
             </div>

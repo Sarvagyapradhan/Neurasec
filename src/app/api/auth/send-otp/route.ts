@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { sendOTP } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,26 +12,32 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Send request to backend to resend OTP
-    const response = await axios.post(`${API_URL}/api/auth/send-otp/`, {
-      email: body.email
-    });
+    // Send OTP using our local library
+    try {
+        await sendOTP(body.email, 'REGISTRATION'); // Assuming registration, could be dynamic
+    } catch (e) {
+        console.error("Local sendOTP failed:", e);
+        throw new Error("Failed to send OTP email");
+    }
     
-    // Store email in session storage for verification
+    // Store email in session storage for verification (optional/legacy)
     const session = request.cookies.get('session')?.value;
     const sessionData = JSON.parse(session || '{}');
     sessionData.verificationEmail = body.email;
-    request.cookies.set('session', JSON.stringify(sessionData));
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: "OTP has been resent to your email"
     });
+    
+    response.cookies.set('session', JSON.stringify(sessionData));
+    return response;
+
   } catch (error: any) {
     console.error("Error resending OTP:", error);
     return NextResponse.json(
-      { error: error.response?.data?.detail || "Failed to resend OTP" },
-      { status: error.response?.status || 500 }
+      { error: "Failed to resend OTP" },
+      { status: 500 }
     );
   }
 } 

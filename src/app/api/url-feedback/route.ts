@@ -71,53 +71,29 @@ export async function POST(request: Request) {
     }
 
     // Check if feedback for this URL and user verdict already exists
-    const existingQuery = `
-      SELECT id, feedback_count FROM url_scan_feedback 
-      WHERE url = $1 AND user_verdict = $2
+    // We use ON CONFLICT to handle race conditions atomically
+    const upsertQuery = `
+      INSERT INTO url_scan_feedback (
+        url, original_verdict, user_verdict, user_comment, user_ip, feedback_count
+      ) VALUES ($1, $2, $3, $4, $5, 1)
+      ON CONFLICT (url, user_verdict) 
+      DO UPDATE SET 
+        feedback_count = url_scan_feedback.feedback_count + 1,
+        submitted_at = NOW(),
+        user_comment = COALESCE($4, url_scan_feedback.user_comment)
+      RETURNING id, feedback_count
     `;
     
-    const existingResult = await db.query(existingQuery, [url, userVerdict]);
+    const upsertResult = await db.query(upsertQuery, [
+      url, 
+      originalVerdict,
+      userVerdict,
+      comment || null,
+      ip
+    ]);
     
-    let feedbackId;
-    
-    if (existingResult.rows.length > 0) {
-      // Update existing feedback count
-      const updateQuery = `
-        UPDATE url_scan_feedback 
-        SET feedback_count = feedback_count + 1,
-            submitted_at = NOW(),
-            user_comment = COALESCE($1, user_comment)
-        WHERE id = $2
-        RETURNING id
-      `;
-      
-      const updateResult = await db.query(updateQuery, [
-        comment || null, 
-        existingResult.rows[0].id
-      ]);
-      
-      feedbackId = updateResult.rows[0].id;
-      console.log(`Updated existing feedback #${feedbackId}, new count: ${existingResult.rows[0].feedback_count + 1}`);
-    } else {
-      // Insert new feedback
-      const insertQuery = `
-        INSERT INTO url_scan_feedback(
-          url, original_verdict, user_verdict, user_comment, user_ip
-        ) VALUES($1, $2, $3, $4, $5)
-        RETURNING id
-      `;
-      
-      const insertResult = await db.query(insertQuery, [
-        url, 
-        originalVerdict,
-        userVerdict,
-        comment || null,
-        ip
-      ]);
-      
-      feedbackId = insertResult.rows[0].id;
-      console.log(`Created new feedback #${feedbackId}`);
-    }
+    const feedbackId = upsertResult.rows[0].id;
+    console.log(`Processed feedback #${feedbackId}, new count: ${upsertResult.rows[0].feedback_count}`);
 
     // Get total feedback count by verdict for this URL
     const statsQuery = `
@@ -142,7 +118,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: 'Feedback recorded successfully',
-      feedbackStats: statsResult.rows,
+      feedbackStats: statsResult.rows.map(row => ({
+        user_verdict: row.user_verdict,
+        count: parseInt(row.count)
+      })),
       totalFeedbacks,
       majorityVerdict
     });
@@ -189,7 +168,10 @@ export async function GET(request: Request) {
     
     return NextResponse.json({
       url,
-      feedbackStats: statsResult.rows,
+      feedbackStats: statsResult.rows.map(row => ({
+        user_verdict: row.user_verdict,
+        count: parseInt(row.count)
+      })),
       totalFeedbacks,
       majorityVerdict,
       hasFeedback: statsResult.rows.length > 0
