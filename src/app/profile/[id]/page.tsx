@@ -42,6 +42,7 @@ export default function ProfilePage() {
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-violet-500 flex items-center justify-center">
               {extendedUser.profile_picture ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={extendedUser.profile_picture}
                   alt={extendedUser.full_name || extendedUser.email}

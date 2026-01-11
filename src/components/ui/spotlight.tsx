@@ -20,9 +20,8 @@ export const Spotlight = ({
 
   useEffect(() => {
     if (isMounted && divRef.current) {
+      const div = divRef.current;
       const handleMouseMove = (e: MouseEvent) => {
-        if (!divRef.current) return;
-        const div = divRef.current;
         const rect = div.getBoundingClientRect();
 
         setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -36,16 +35,14 @@ export const Spotlight = ({
         setOpacity(0);
       };
 
-      divRef.current.addEventListener("mousemove", handleMouseMove);
-      divRef.current.addEventListener("mouseenter", handleMouseEnter);
-      divRef.current.addEventListener("mouseleave", handleMouseLeave);
+      div.addEventListener("mousemove", handleMouseMove);
+      div.addEventListener("mouseenter", handleMouseEnter);
+      div.addEventListener("mouseleave", handleMouseLeave);
 
       return () => {
-        if (divRef.current) {
-          divRef.current.removeEventListener("mousemove", handleMouseMove);
-          divRef.current.removeEventListener("mouseenter", handleMouseEnter);
-          divRef.current.removeEventListener("mouseleave", handleMouseLeave);
-        }
+        div.removeEventListener("mousemove", handleMouseMove);
+        div.removeEventListener("mouseenter", handleMouseEnter);
+        div.removeEventListener("mouseleave", handleMouseLeave);
       };
     }
   }, [isMounted]);
