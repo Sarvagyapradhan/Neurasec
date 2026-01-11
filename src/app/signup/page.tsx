@@ -182,7 +182,7 @@ export default function SignupPage() {
               <Check size={20} className="flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">Registration successful!</p>
-                <p className="text-sm mt-1">We've sent a verification code to your email. Please check your inbox (and spam folder).</p>
+                <p className="text-sm mt-1">We&apos;ve sent a verification code to your email. Please check your inbox (and spam folder).</p>
                 <p className="text-sm mt-2">Redirecting to verification page...</p>
               </div>
             </div>

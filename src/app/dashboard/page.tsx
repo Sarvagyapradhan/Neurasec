@@ -243,7 +243,7 @@ export default function DashboardPage() {
             className="mb-4 md:mb-0"
           >
             <h1 className="text-3xl font-bold text-slate-100">Welcome back, {user?.username || user?.email?.split('@')[0] || "User"}</h1>
-            <p className="text-slate-400 mt-1">Here's your security overview for today</p>
+            <p className="text-slate-400 mt-1">Here&apos;s your security overview for today</p>
           </motion.div>
           <div className="flex items-center space-x-3">
             <div className="relative">

@@ -171,15 +171,15 @@ const UrlAnalyzerPage = () => {
               <li>• Unusual subdomains (login.secure-site.example.com)</li>
               <li>• Non-HTTPS connections for sensitive sites</li>
               <li>• URLs with excessive numbers or special characters</li>
-              <li>• Look-alike characters (paypаl.com with Cyrillic 'а')</li>
+              <li>• Look-alike characters (paypаl.com with Cyrillic &apos;а&apos;)</li>
               <li>• Mixed script domains (using multiple alphabets)</li>
             </ul>
             <div className="mt-3 text-xs text-slate-300 bg-slate-800/30 p-2 rounded">
               <span className="font-medium">Try scanning these domains to test homograph detection:</span>
               <ul className="mt-1 text-xs text-slate-400 space-y-1">
-                <li>• payрal.com (using Cyrillic 'р' that looks like Latin 'p')</li>
-                <li>• аpple.com (using Cyrillic 'а' that looks like Latin 'a')</li>
-                <li>• microsоft.com (using Cyrillic 'о' that looks like Latin 'o')</li>
+                <li>• payрal.com (using Cyrillic &apos;р&apos; that looks like Latin &apos;p&apos;)</li>
+                <li>• аpple.com (using Cyrillic &apos;а&apos; that looks like Latin &apos;a&apos;)</li>
+                <li>• microsоft.com (using Cyrillic &apos;о&apos; that looks like Latin &apos;o&apos;)</li>
               </ul>
             </div>
           </div>

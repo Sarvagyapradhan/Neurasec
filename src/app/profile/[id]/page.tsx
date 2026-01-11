@@ -2,6 +2,7 @@
 
 import { Shield, CheckCircle } from "lucide-react";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { useAuth } from "@/components/AuthProvider";
 import { Card } from "@/components/ui/card";
@@ -42,11 +43,14 @@ export default function ProfilePage() {
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-primary to-violet-500 flex items-center justify-center">
               {extendedUser.profile_picture ? (
-                <img
-                  src={extendedUser.profile_picture}
-                  alt={extendedUser.full_name || extendedUser.email}
-                  className="w-full h-full object-cover rounded-full"
-                />
+                <div className="relative w-24 h-24 rounded-full overflow-hidden">
+                    <Image
+                      src={extendedUser.profile_picture}
+                      alt={extendedUser.full_name || extendedUser.email}
+                      fill
+                      className="object-cover"
+                    />
+                </div>
               ) : (
                 <Shield className="w-12 h-12 text-white" />
               )}

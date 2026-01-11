@@ -246,10 +246,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Safety timeout: ensure loading state doesn't get stuck indefinitely
       const safetyTimeout = setTimeout(() => {
-        if (loading) {
-            console.warn("[AuthProvider] Safety timeout triggered - forcing loading state to false");
-            setLoading(false);
-        }
+        // We need to check the current value of loading via a ref or similar if we wanted to be precise, 
+        // but here we just force it false after 5s if component is still mounted.
+        // However, 'loading' variable from state closure is stale here (always initial value), 
+        // so we just blindly set false to be safe.
+        console.warn("[AuthProvider] Safety timeout triggered - forcing loading state to false");
+        setLoading(false);
       }, 5000); // 5 seconds max loading time
       
       return () => {
@@ -257,6 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clearTimeout(safetyTimeout);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {

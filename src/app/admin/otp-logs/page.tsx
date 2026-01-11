@@ -46,17 +46,21 @@ export default function OTPLogsPage() {
   
   // Check if user is admin
   useEffect(() => {
-    if (!loading && isAuthenticated && user?.role === "admin") {
-      setHasAccess(true);
-      fetchOTPLogs();
-    } else if (!loading && isAuthenticated && user?.role !== "admin") {
-      toast({
-        title: "Access denied",
-        description: "You don't have permission to access this page",
-        variant: "destructive",
-      });
-      router.push("/dashboard");
-    }
+    const checkAccess = async () => {
+        if (!loading && isAuthenticated && user?.role === "admin") {
+            setHasAccess(true);
+            await fetchOTPLogs();
+        } else if (!loading && isAuthenticated && user?.role !== "admin") {
+            toast({
+                title: "Access denied",
+                description: "You don't have permission to access this page",
+                variant: "destructive",
+            });
+            router.push("/dashboard");
+        }
+    };
+    checkAccess();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, isAuthenticated, user, router, toast]);
   
   const fetchOTPLogs = async () => {

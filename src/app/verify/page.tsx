@@ -245,7 +245,7 @@ function VerifyPage() {
               <CardTitle className="text-slate-100">Security Verification</CardTitle>
             </div>
             <CardDescription className="text-slate-400">
-              We've sent a verification code to {formData.email || "your email"}
+              We&apos;ve sent a verification code to {formData.email || "your email"}
             </CardDescription>
           </CardHeader>
           
