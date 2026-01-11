@@ -1,30 +1,91 @@
 "use client";
 
-import { Shield, CheckCircle } from "lucide-react";
-import { useParams } from "next/navigation";
+import { Shield, CheckCircle, Link2, Mail, FileText, ArrowRight } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { BackgroundGradient } from "@/components/ui/background-gradient";
 import { useAuth } from "@/components/AuthProvider";
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 // Extended User interface with optional properties
 interface ExtendedUser {
-  id: string;
+  id: string | number;
   email: string;
   username: string;
   role?: string;
   profile_picture?: string;
   full_name?: string;
+  is_verified?: boolean;
+  createdAt?: string;
+  lastLogin?: string | null;
 }
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const params = useParams();
+  const router = useRouter();
   const profileId = typeof params.id === 'string' ? params.id : params.id?.[0];
   
   // Check if this is the current user's profile
   const isOwnProfile = user?.id.toString() === profileId;
-  
+
+  const [recentScans, setRecentScans] = useState<Array<{
+    id: number;
+    type: string;
+    input: string;
+    score: number;
+    createdAt: string;
+    result: string;
+  }>>([]);
+  const [scansLoading, setScansLoading] = useState(false);
+
+  // Cast user to ExtendedUser for optional properties
+  const extendedUser = user as ExtendedUser;
+
+  useEffect(() => {
+    if (!user || !profileId) return;
+    if (!isOwnProfile) {
+      router.replace(`/profile/${encodeURIComponent(String(user.id))}`);
+    }
+  }, [isOwnProfile, profileId, router, user]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!user || !isOwnProfile) return;
+      setScansLoading(true);
+      try {
+        const resp = await fetch("/api/scans?limit=8");
+        const data = await resp.json();
+        if (resp.ok) {
+          setRecentScans(data?.scans ?? []);
+        }
+      } finally {
+        setScansLoading(false);
+      }
+    };
+    load();
+  }, [isOwnProfile, user]);
+
+  const scanRows = useMemo(() => {
+    const iconFor = (t: string) => {
+      const tt = (t || "").toLowerCase();
+      if (tt.includes("url")) return Link2;
+      if (tt.includes("email")) return Mail;
+      if (tt.includes("file")) return FileText;
+      return Shield;
+    };
+    const labelFor = (t: string) => (t ? t.toUpperCase() : "SCAN");
+    return recentScans.map(s => ({
+      ...s,
+      Icon: iconFor(s.type),
+      label: labelFor(s.type),
+      riskPct: Math.round((s.score ?? 0) * 100),
+      when: new Date(s.createdAt).toLocaleString(),
+    }));
+  }, [recentScans]);
+
   if (!user) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
@@ -32,9 +93,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  // Cast user to ExtendedUser for optional properties
-  const extendedUser = user as ExtendedUser;
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -98,17 +156,61 @@ export default function ProfilePage() {
             </div>
             <div>
               <h3 className="text-lg font-medium text-white mb-2">Email Verified</h3>
-              <p className="text-lg text-green-500">Verified</p>
+              <p className={`text-lg ${extendedUser.is_verified ? "text-green-500" : "text-yellow-400"}`}>
+                {extendedUser.is_verified ? "Verified" : "Not verified"}
+              </p>
             </div>
             <div>
               <h3 className="text-lg font-medium text-white mb-2">Created At</h3>
-              <p className="text-lg text-zinc-400">{new Date().toLocaleDateString()}</p>
+              <p className="text-lg text-zinc-400">
+                {extendedUser.createdAt ? new Date(extendedUser.createdAt).toLocaleDateString() : "—"}
+              </p>
             </div>
             <div>
               <h3 className="text-lg font-medium text-white mb-2">Last Login</h3>
-              <p className="text-lg text-zinc-400">{new Date().toLocaleDateString()}</p>
+              <p className="text-lg text-zinc-400">
+                {extendedUser.lastLogin ? new Date(extendedUser.lastLogin).toLocaleString() : "—"}
+              </p>
             </div>
           </div>
+        </Card>
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Recent scans</h2>
+          <Link href="/scans" className="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+            View all <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+        <Card className="bg-zinc-900/50 rounded-lg p-6 border border-white/10">
+          {scansLoading ? (
+            <div className="text-zinc-400">Loading scan history…</div>
+          ) : scanRows.length === 0 ? (
+            <div className="text-zinc-400">No scans yet. Try URL Scanner / Email Analyzer / File Scanner.</div>
+          ) : (
+            <div className="space-y-3">
+              {scanRows.map((s) => (
+                <div key={s.id} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 rounded-lg border border-white/10 bg-black/20 p-4">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="mt-0.5 rounded-md bg-blue-500/10 p-2">
+                      <s.Icon className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm text-white font-medium">{s.label}</div>
+                      <div className="text-xs text-zinc-400 break-all overflow-hidden">
+                        {s.input.length > 120 ? `${s.input.slice(0, 120)}…` : s.input}
+                      </div>
+                      <div className="text-xs text-zinc-500 mt-1">{s.when}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-zinc-300 sm:whitespace-nowrap self-end sm:self-auto">
+                    Risk: <span className="text-white">{s.riskPct}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>

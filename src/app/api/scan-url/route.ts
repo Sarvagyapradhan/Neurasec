@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { Pool } from 'pg';
 import { detectHomographAttack } from '../analyze-url/homograph';
+import { verifyToken } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 // Cache duration in hours (how long a result is considered "fresh")
 const CACHE_DURATION_HOURS = 6;
@@ -621,7 +623,7 @@ const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10; // 10 scans per minute per IP
 
 // Modify the start of the POST handler to check database tables
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   // Trigger background cleanup with 5% probability
   // This avoids running it on every request but keeps DB clean enough
   if (Math.random() < 0.05) {
@@ -772,6 +774,31 @@ export async function POST(request: Request) {
             console.log('Saved trusted domain result to database');
           } catch (err) {
             console.error('Error saving trusted domain to database:', err);
+          }
+
+          // Best-effort: persist to per-user history if authenticated
+          try {
+            const token =
+              request.headers.get('Authorization')?.replace('Bearer ', '') ||
+              request.cookies.get('auth_token')?.value;
+            if (token) {
+              const decoded = await verifyToken(token);
+              const userId =
+                typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId;
+              if (Number.isFinite(userId)) {
+                await prisma.scan.create({
+                  data: {
+                    userId: userId as number,
+                    type: 'url',
+                    input: trustedResult.url,
+                    result: JSON.stringify(trustedResult),
+                    score: trustedResult.score,
+                  },
+                });
+              }
+            }
+          } catch {
+            // ignore persistence errors
           }
 
           return NextResponse.json(trustedResult);
@@ -1002,7 +1029,34 @@ export async function POST(request: Request) {
       }
     }
     
-    // 6. Return the final result (either from initial analysis or fallback)
+    // 6. Persist to per-user scan history (best-effort)
+    if (analysisResult) {
+      try {
+        const token =
+          request.headers.get('Authorization')?.replace('Bearer ', '') ||
+          request.cookies.get('auth_token')?.value;
+        if (token) {
+          const decoded = await verifyToken(token);
+          const userId =
+            typeof decoded.userId === 'string' ? parseInt(decoded.userId, 10) : decoded.userId;
+          if (Number.isFinite(userId)) {
+            await prisma.scan.create({
+              data: {
+                userId: userId as number,
+                type: 'url',
+                input: analysisResult.url,
+                result: JSON.stringify(analysisResult),
+                score: analysisResult.score,
+              },
+            });
+          }
+        }
+      } catch {
+        // ignore persistence errors
+      }
+    }
+
+    // 7. Return the final result (either from initial analysis or fallback)
     if (analysisResult) {
         return NextResponse.json(analysisResult);
     } else {

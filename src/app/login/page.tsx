@@ -204,7 +204,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full items-center justify-center dark">
+    <div className="flex min-h-[100svh] w-full items-start sm:items-center justify-center px-4 py-10 dark">
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 z-[-1]"></div>
       <Card className="w-full max-w-md shadow-lg border-slate-800 bg-slate-900/80">
         <CardHeader className="space-y-1">

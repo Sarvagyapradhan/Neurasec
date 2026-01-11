@@ -94,4 +94,12 @@ body {
   html {
     scroll-behavior: smooth;
   }
+
+  /* Prevent horizontal overflow / blank side areas on mobile and stabilize iOS text sizing */
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
 } 

@@ -1,4 +1,4 @@
-'use client'; // Add this if using client-side state/interactions later
+'use client';
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { MailCheck, AlertTriangle, ShieldX, Shield, Upload } from 'lucide-react';
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 // Define the type for the analysis result
 type AnalysisResultType = {
   verdict: 'Safe' | 'Suspicious' | 'Phishing';
   score: number;
   explanation: string;
+  urlsFound?: string[];
+  signals?: string[];
 };
 
 const EmailAnalyzerPage = () => {
@@ -20,23 +23,36 @@ const EmailAnalyzerPage = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResultType | null>(null);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!emailContent.trim()) return;
     
     setIsAnalyzing(true);
-    
-    // Simulate analysis with timeout
-    setTimeout(() => {
-      // Mock result for demo purposes
-      const mockResult: AnalysisResultType = {
-        verdict: Math.random() > 0.7 ? 'Safe' : Math.random() > 0.5 ? 'Suspicious' : 'Phishing',
-        score: Math.random(),
-        explanation: "This email has been analyzed using our AI security model. The content was processed for known phishing patterns, suspicious links, and malicious payload indicators."
-      };
-      
-      setAnalysisResult(mockResult);
+    setAnalysisResult(null);
+
+    try {
+      const response = await fetch("/api/scan-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: emailContent }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to analyze email");
+      }
+
+      setAnalysisResult(data);
+    } catch (err) {
+      console.error("Email scan error:", err);
+      toast.error((err as Error).message || "Failed to analyze email");
+      setAnalysisResult({
+        verdict: "Suspicious",
+        score: 0.3,
+        explanation: "We could not complete the analysis right now. Please try again in a moment.",
+      });
+    } finally {
       setIsAnalyzing(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -161,7 +177,7 @@ const EmailAnalyzerPage = () => {
                     
                     <div className="mt-4">
                       <h3 className="text-xl font-medium text-slate-100">Confidence Score</h3>
-                      <div className="mt-2 relative h-3 w-64 mx-auto bg-slate-800 rounded-full overflow-hidden">
+                      <div className="mt-2 relative h-3 w-full max-w-xs mx-auto bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
                           className={`
                             absolute top-0 left-0 h-full rounded-full

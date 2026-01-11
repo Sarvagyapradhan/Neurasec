@@ -69,14 +69,16 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ 
-        access_token: token,
-        message: 'Login successful',
-        user: { 
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          role: user.role
-        }
+      // Keep both fields for compatibility with different clients in this repo
+      access_token: token,
+      token,
+      message: 'Login successful',
+      user: { 
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role
+      }
     });
 
   } catch (error: any) {

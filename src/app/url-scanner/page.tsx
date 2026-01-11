@@ -497,7 +497,7 @@ export default function URLScannerPage() {
                     {analysisResult.verdict !== 'Error' && (
                     <div className="mt-4">
                       <h3 className="text-xl font-medium text-slate-100">Risk Assessment</h3>
-                      <div className="mt-2 relative h-3 w-64 mx-auto bg-slate-800 rounded-full overflow-hidden">
+                      <div className="mt-2 relative h-3 w-full max-w-xs mx-auto bg-slate-800 rounded-full overflow-hidden">
                         <motion.div 
                           className={`
                             absolute top-0 left-0 h-full rounded-full

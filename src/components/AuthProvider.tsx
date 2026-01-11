@@ -266,7 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log("[AuthProvider] Attempting login with:", email);
       
-      const response = await axios.post("/api/auth/login/", {
+      const response = await axios.post("/api/auth/login", {
         username_or_email: email,
         password,
       });
@@ -279,8 +279,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { requiresOTP: true, email };
       }
 
-      // Extract token and user data from response
-      const { token, user } = response.data;
+      // Extract token and user data from response (support legacy shapes)
+      const token =
+        response.data?.access_token ||
+        response.data?.token ||
+        response.data?.accessToken ||
+        null;
+      const user = response.data?.user;
 
       if (!token) {
         console.error("[AuthProvider] No token received in login response");
