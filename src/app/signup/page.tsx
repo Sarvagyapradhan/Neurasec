@@ -1,13 +1,13 @@
-&apos;use client&apos;;
+'use client';
 
-import { useState } from &apos;react&apos;;
-import Link from &apos;next/link&apos;;
-import { useRouter } from &apos;next/navigation&apos;;
-import { Button } from &apos;@/components/ui/button&apos;;
-import { Input } from &apos;@/components/ui/input&apos;;
-import { Label } from &apos;@/components/ui/label&apos;;
-import { useToast } from &apos;@/components/ui/use-toast&apos;;
-import { AlertCircle, Info, Check } from &apos;lucide-react&apos;;
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { AlertCircle, Info, Check } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -15,72 +15,72 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from &apos;@/components/ui/card&apos;;
+} from '@/components/ui/card';
 
 type FieldError = {
-  field: &apos;username&apos; | &apos;email&apos; | &apos;password&apos; | &apos;confirmPassword&apos; | &apos;general&apos;;
+  field: 'username' | 'email' | 'password' | 'confirmPassword' | 'general';
   message: string;
 };
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState(&apos;&apos;);
-  const [email, setEmail] = useState(&apos;&apos;);
-  const [password, setPassword] = useState(&apos;&apos;);
-  const [confirmPassword, setConfirmPassword] = useState(&apos;&apos;);
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<FieldError[]>([]);
-  const [generalError, setGeneralError] = useState(&apos;&apos;);
+  const [generalError, setGeneralError] = useState('');
   const [success, setSuccess] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
 
-  const clearFieldError = (field: FieldError[&apos;field&apos;]) => {
+  const clearFieldError = (field: FieldError['field']) => {
     setErrors(errors.filter(error => error.field !== field));
   };
 
-  const handleInputChange = (field: FieldError[&apos;field&apos;], value: string) => {
+  const handleInputChange = (field: FieldError['field'], value: string) => {
     switch (field) {
-      case &apos;username&apos;:
+      case 'username':
         setUsername(value);
         break;
-      case &apos;email&apos;:
+      case 'email':
         setEmail(value);
         break;
-      case &apos;password&apos;:
+      case 'password':
         setPassword(value);
         break;
-      case &apos;confirmPassword&apos;:
+      case 'confirmPassword':
         setConfirmPassword(value);
         break;
     }
     clearFieldError(field);
-    if (generalError) setGeneralError(&apos;&apos;);
+    if (generalError) setGeneralError('');
   };
 
   const validateForm = (): boolean => {
     const newErrors: FieldError[] = [];
     
     if (!username.trim()) {
-      newErrors.push({ field: &apos;username&apos;, message: &apos;Username is required&apos; });
+      newErrors.push({ field: 'username', message: 'Username is required' });
     } else if (username.length < 3) {
-      newErrors.push({ field: &apos;username&apos;, message: &apos;Username must be at least 3 characters&apos; });
+      newErrors.push({ field: 'username', message: 'Username must be at least 3 characters' });
     }
     
     if (!email.trim()) {
-      newErrors.push({ field: &apos;email&apos;, message: &apos;Email is required&apos; });
+      newErrors.push({ field: 'email', message: 'Email is required' });
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.push({ field: &apos;email&apos;, message: &apos;Please enter a valid email address&apos; });
+      newErrors.push({ field: 'email', message: 'Please enter a valid email address' });
     }
     
     if (!password) {
-      newErrors.push({ field: &apos;password&apos;, message: &apos;Password is required&apos; });
+      newErrors.push({ field: 'password', message: 'Password is required' });
     } else if (password.length < 8) {
-      newErrors.push({ field: &apos;password&apos;, message: &apos;Password must be at least 8 characters&apos; });
+      newErrors.push({ field: 'password', message: 'Password must be at least 8 characters' });
     }
     
     if (password !== confirmPassword) {
-      newErrors.push({ field: &apos;confirmPassword&apos;, message: &apos;Passwords do not match&apos; });
+      newErrors.push({ field: 'confirmPassword', message: 'Passwords do not match' });
     }
     
     setErrors(newErrors);
@@ -95,13 +95,13 @@ export default function SignupPage() {
     }
     
     setLoading(true);
-    setGeneralError(&apos;&apos;);
+    setGeneralError('');
     
     try {
-      const response = await fetch(&apos;/api/auth/register/&apos;, {
-        method: &apos;POST&apos;,
+      const response = await fetch('/api/auth/register/', {
+        method: 'POST',
         headers: {
-          &apos;Content-Type&apos;: &apos;application/json&apos;,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           username,
@@ -114,15 +114,15 @@ export default function SignupPage() {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error(&apos;Registration failed:&apos;, data);
+        console.error('Registration failed:', data);
         
         // Handle field-specific errors
         if (data.field) {
           setErrors([...errors.filter(e => e.field !== data.field), 
-            { field: data.field as FieldError[&apos;field&apos;], message: data.error }
+            { field: data.field as FieldError['field'], message: data.error }
           ]);
         } else {
-          setGeneralError(data.error || &apos;Registration failed. Please try again.&apos;);
+          setGeneralError(data.error || 'Registration failed. Please try again.');
         }
         
         toast({
@@ -148,8 +148,8 @@ export default function SignupPage() {
         }, 3000);
       }
     } catch (err) {
-      console.error(&apos;Fetch error:&apos;, err);
-      setGeneralError(&apos;Network error. Please check your connection and try again.&apos;);
+      console.error('Fetch error:', err);
+      setGeneralError('Network error. Please check your connection and try again.');
       
       toast({
         variant: "destructive",
@@ -161,7 +161,7 @@ export default function SignupPage() {
     }
   };
 
-  const getErrorForField = (field: FieldError[&apos;field&apos;]): string | null => {
+  const getErrorForField = (field: FieldError['field']): string | null => {
     const error = errors.find(e => e.field === field);
     return error ? error.message : null;
   };
@@ -191,7 +191,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="username" 
-                  className={getErrorForField(&apos;username&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
+                  className={getErrorForField('username') ? 'text-red-500' : 'text-slate-200'}
                 >
                   Username
                 </Label>
@@ -201,23 +201,23 @@ export default function SignupPage() {
                     placeholder="Choose a username"
                     type="text"
                     value={username}
-                    onChange={(e) => handleInputChange(&apos;username&apos;, e.target.value)}
-                    className={getErrorForField(&apos;username&apos;) 
-                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
-                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
+                    onChange={(e) => handleInputChange('username', e.target.value)}
+                    className={getErrorForField('username') 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
+                      : 'border-slate-700 bg-slate-800/50 text-white'
                     }
                     disabled={loading}
                   />
-                  {getErrorForField(&apos;username&apos;) && (
+                  {getErrorForField('username') && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField(&apos;username&apos;) && (
+                {getErrorForField('username') && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField(&apos;username&apos;)}</span>
+                    <span>{getErrorForField('username')}</span>
                   </div>
                 )}
               </div>
@@ -225,7 +225,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="email" 
-                  className={getErrorForField(&apos;email&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
+                  className={getErrorForField('email') ? 'text-red-500' : 'text-slate-200'}
                 >
                   Email
                 </Label>
@@ -235,23 +235,23 @@ export default function SignupPage() {
                     placeholder="your@email.com"
                     type="email"
                     value={email}
-                    onChange={(e) => handleInputChange(&apos;email&apos;, e.target.value)}
-                    className={getErrorForField(&apos;email&apos;) 
-                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
-                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={getErrorForField('email') 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
+                      : 'border-slate-700 bg-slate-800/50 text-white'
                     }
                     disabled={loading}
                   />
-                  {getErrorForField(&apos;email&apos;) && (
+                  {getErrorForField('email') && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField(&apos;email&apos;) && (
+                {getErrorForField('email') && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField(&apos;email&apos;)}</span>
+                    <span>{getErrorForField('email')}</span>
                   </div>
                 )}
               </div>
@@ -259,7 +259,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="password" 
-                  className={getErrorForField(&apos;password&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
+                  className={getErrorForField('password') ? 'text-red-500' : 'text-slate-200'}
                 >
                   Password
                 </Label>
@@ -269,23 +269,23 @@ export default function SignupPage() {
                     placeholder="Create a password"
                     type="password"
                     value={password}
-                    onChange={(e) => handleInputChange(&apos;password&apos;, e.target.value)}
-                    className={getErrorForField(&apos;password&apos;) 
-                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
-                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={getErrorForField('password') 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
+                      : 'border-slate-700 bg-slate-800/50 text-white'
                     }
                     disabled={loading}
                   />
-                  {getErrorForField(&apos;password&apos;) && (
+                  {getErrorForField('password') && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField(&apos;password&apos;) && (
+                {getErrorForField('password') && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField(&apos;password&apos;)}</span>
+                    <span>{getErrorForField('password')}</span>
                   </div>
                 )}
               </div>
@@ -293,7 +293,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="confirmPassword" 
-                  className={getErrorForField(&apos;confirmPassword&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
+                  className={getErrorForField('confirmPassword') ? 'text-red-500' : 'text-slate-200'}
                 >
                   Confirm Password
                 </Label>
@@ -303,23 +303,23 @@ export default function SignupPage() {
                     placeholder="Confirm your password"
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => handleInputChange(&apos;confirmPassword&apos;, e.target.value)}
-                    className={getErrorForField(&apos;confirmPassword&apos;) 
-                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
-                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={getErrorForField('confirmPassword') 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
+                      : 'border-slate-700 bg-slate-800/50 text-white'
                     }
                     disabled={loading}
                   />
-                  {getErrorForField(&apos;confirmPassword&apos;) && (
+                  {getErrorForField('confirmPassword') && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField(&apos;confirmPassword&apos;) && (
+                {getErrorForField('confirmPassword') && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField(&apos;confirmPassword&apos;)}</span>
+                    <span>{getErrorForField('confirmPassword')}</span>
                   </div>
                 )}
               </div>
@@ -334,7 +334,7 @@ export default function SignupPage() {
               )}
               
               <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" type="submit" disabled={loading}>
-                {loading ? &apos;Creating account...&apos; : &apos;Create account&apos;}
+                {loading ? 'Creating account...' : 'Create account'}
               </Button>
               
               <p className="text-xs text-center text-slate-400 mt-3">
@@ -345,7 +345,7 @@ export default function SignupPage() {
         </CardContent>
         <CardFooter className="flex justify-center">
           <div className="text-sm text-slate-400">
-            Already have an account?{&apos; &apos;}
+            Already have an account?{' '}
             <Link href="/login" className="text-blue-400 hover:text-blue-300 hover:underline">
               Sign in
             </Link>

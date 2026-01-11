@@ -34,7 +34,7 @@ export default function Home() {
     }
   }, [isAuthenticated, loading, router]);
 
-  // Don&apos;t render landing page content if we&apos;re authenticated or still checking auth status
+  // Don't render landing page content if we're authenticated or still checking auth status
   if (loading || isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">

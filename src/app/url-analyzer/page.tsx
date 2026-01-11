@@ -1,6 +1,6 @@
-&apos;use client&apos;;
+'use client';
 
-import React, { useState } from &apos;react&apos;;
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -18,12 +18,12 @@ import {
   Lightbulb,
   Info as InfoIcon,
   Shield
-} from &apos;lucide-react&apos;; // Icons
+} from 'lucide-react'; // Icons
 
 // Update interface based on README API response
 interface UrlAnalysisResult {
   url: string;
-  verdict: &apos;Safe&apos; | &apos;Risky&apos; | &apos;Dangerous&apos;;
+  verdict: 'Safe' | 'Risky' | 'Dangerous';
   score: number;
   sources: { [key: string]: boolean };
   domain_age_days: number | null;
@@ -49,8 +49,8 @@ const UrlAnalyzerPage = () => {
       let processedUrl = url.trim();
       
       // Add protocol if missing
-      if (!processedUrl.startsWith(&apos;http://&apos;) && !processedUrl.startsWith(&apos;https://&apos;)) {
-        processedUrl = &apos;https://&apos; + processedUrl;
+      if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+        processedUrl = 'https://' + processedUrl;
       }
       
       // Validate URL format before sending, but allow Unicode/IDN domains
@@ -58,30 +58,30 @@ const UrlAnalyzerPage = () => {
         const parsedUrl = new URL(processedUrl);
         
         // Check for valid domain structure (at least one dot and a TLD)
-        const domainParts = parsedUrl.hostname.split(&apos;.&apos;);
+        const domainParts = parsedUrl.hostname.split('.');
         if (domainParts.length < 2 || domainParts[domainParts.length - 1].length < 2) {
-          throw new Error(&apos;Invalid URL: Please enter a domain with a valid TLD (e.g., .com, .org)&apos;);
+          throw new Error('Invalid URL: Please enter a domain with a valid TLD (e.g., .com, .org)');
         }
         
         // Only do basic validation - Unicode characters and IDN domains are now allowed
         // This lets our backend homograph detection work properly
         if (!parsedUrl.hostname || parsedUrl.hostname.length < 3) {
-          throw new Error(&apos;Invalid URL: Hostname is too short or missing&apos;);
+          throw new Error('Invalid URL: Hostname is too short or missing');
         }
         
         // The old strict validation regex is commented out - it would block homograph attacks
         // const validDomainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
         // if (!validDomainRegex.test(parsedUrl.hostname)) {
-        //   throw new Error(&apos;Invalid URL: Domain contains invalid characters&apos;);
+        //   throw new Error('Invalid URL: Domain contains invalid characters');
         // }
       } catch (e) {
-        throw new Error(&apos;Invalid URL format. Please enter a valid website address (e.g., example.com)&apos;);
+        throw new Error('Invalid URL format. Please enter a valid website address (e.g., example.com)');
       }
 
-      const response = await fetch(&apos;/api/analyze-url&apos;, {
-        method: &apos;POST&apos;,
+      const response = await fetch('/api/analyze-url', {
+        method: 'POST',
         headers: {
-          &apos;Content-Type&apos;: &apos;application/json&apos;,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ url: processedUrl }),
       });
@@ -97,7 +97,7 @@ const UrlAnalyzerPage = () => {
 
     } catch (err) {
       console.error("Analysis request failed:", err);
-      setError(err instanceof Error ? err.message : &apos;An unknown error occurred&apos;);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -106,7 +106,7 @@ const UrlAnalyzerPage = () => {
   // Default analysis result with proper types (will be replaced by API response)
   // const defaultResult: UrlAnalysisResult = {
   //   url: "",
-  //   verdict: &apos;Safe&apos;,
+  //   verdict: 'Safe',
   //   score: 0,
   //   sources: {},
   //   domain_age_days: null,
@@ -143,7 +143,7 @@ const UrlAnalyzerPage = () => {
                   className="pl-9 flex-grow"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === &apos;Enter&apos; && url.trim() && handleAnalyze()}
+                  onKeyDown={(e) => e.key === 'Enter' && url.trim() && handleAnalyze()}
                 />
               </div>
               <Button 
@@ -224,11 +224,11 @@ const UrlAnalyzerPage = () => {
                     <ul className="mt-1 text-sm text-slate-400 space-y-1">
                       {analysisResult.suspicious_features
                         .filter(feature => 
-                          feature.includes(&apos;mimic&apos;) || 
-                          feature.includes(&apos;similar&apos;) || 
-                          feature.includes(&apos;character&apos;) || 
-                          feature.includes(&apos;Punycode&apos;) ||
-                          feature.includes(&apos;mix&apos;)
+                          feature.includes('mimic') || 
+                          feature.includes('similar') || 
+                          feature.includes('character') || 
+                          feature.includes('Punycode') ||
+                          feature.includes('mix')
                         )
                         .map((feature, index) => (
                           <li key={index} className="flex items-start">
@@ -256,8 +256,8 @@ const UrlAnalyzerPage = () => {
             {/* Domain & SSL Info */}
             <div className="lg:col-span-1 space-y-3 p-6 border rounded-lg bg-slate-900/50">
               <h4 className="text-lg font-medium flex items-center text-slate-100"><Eye className="mr-2 h-5 w-5 text-blue-400"/>Domain & Security</h4>
-              <InfoItem label="Domain Age" value={analysisResult.domain_age_days !== null ? `${analysisResult.domain_age_days} days` : &apos;Not Available&apos;} />
-              <InfoItem label="SSL Certificate" value={analysisResult.ssl_valid !== null ? (analysisResult.ssl_valid ? &apos;Valid&apos; : &apos;Invalid/Missing&apos;) : &apos;Not Checked&apos;} status={analysisResult.ssl_valid === null ? undefined : analysisResult.ssl_valid ? &apos;safe&apos; : &apos;dangerous&apos;} />
+              <InfoItem label="Domain Age" value={analysisResult.domain_age_days !== null ? `${analysisResult.domain_age_days} days` : 'Not Available'} />
+              <InfoItem label="SSL Certificate" value={analysisResult.ssl_valid !== null ? (analysisResult.ssl_valid ? 'Valid' : 'Invalid/Missing') : 'Not Checked'} status={analysisResult.ssl_valid === null ? undefined : analysisResult.ssl_valid ? 'safe' : 'dangerous'} />
             </div>
 
             {/* Threat Sources */}
@@ -268,8 +268,8 @@ const UrlAnalyzerPage = () => {
                   {Object.entries(analysisResult.sources).map(([source, detected]) => (
                     <li key={source} className="flex justify-between">
                       <span className="text-slate-400">{formatSourceName(source)}:</span>
-                      <span className={`font-medium ${detected ? &apos;text-red-400&apos; : &apos;text-green-400&apos;}`}>
-                        {detected ? &apos;Detected&apos; : &apos;Clean&apos;}
+                      <span className={`font-medium ${detected ? 'text-red-400' : 'text-green-400'}`}>
+                        {detected ? 'Detected' : 'Clean'}
                       </span>
                     </li>
                   ))}
@@ -296,7 +296,7 @@ const UrlAnalyzerPage = () => {
             {/* Suggestions */}
             <div className="md:col-span-2 lg:col-span-3 space-y-3 p-6 border rounded-lg bg-slate-900/50">
               <h4 className="text-lg font-medium flex items-center text-slate-100"><Lightbulb className="mr-2 h-5 w-5 text-yellow-400"/>Suggestions</h4>
-              <p className="text-sm text-slate-400">{analysisResult.suggestions || &apos;No specific suggestions at this time.&apos;}</p>
+              <p className="text-sm text-slate-400">{analysisResult.suggestions || 'No specific suggestions at this time.'}</p>
             </div>
           </CardContent>
         </Card>
@@ -316,29 +316,29 @@ const UrlAnalyzerPage = () => {
 };
 
 // Helper components and functions
-const VerdictIcon = ({ verdict }: { verdict: UrlAnalysisResult[&apos;verdict&apos;] }) => {
+const VerdictIcon = ({ verdict }: { verdict: UrlAnalysisResult['verdict'] }) => {
   const className = "h-16 w-16";
   switch (verdict) {
-    case &apos;Safe&apos;: return <ShieldCheck className={`${className} text-green-500`} />;
-    case &apos;Risky&apos;: return <AlertCircle className={`${className} text-yellow-500`} />;
-    case &apos;Dangerous&apos;: return <XCircle className={`${className} text-red-500`} />;
+    case 'Safe': return <ShieldCheck className={`${className} text-green-500`} />;
+    case 'Risky': return <AlertCircle className={`${className} text-yellow-500`} />;
+    case 'Dangerous': return <XCircle className={`${className} text-red-500`} />;
     default: return null;
   }
 };
 
-const getVerdictColor = (verdict: UrlAnalysisResult[&apos;verdict&apos;]) => {
+const getVerdictColor = (verdict: UrlAnalysisResult['verdict']) => {
   switch (verdict) {
-    case &apos;Safe&apos;: return &apos;text-green-600&apos;;
-    case &apos;Risky&apos;: return &apos;text-yellow-600&apos;;
-    case &apos;Dangerous&apos;: return &apos;text-red-600&apos;;
-    default: return &apos;text-slate-100&apos;;
+    case 'Safe': return 'text-green-600';
+    case 'Risky': return 'text-yellow-600';
+    case 'Dangerous': return 'text-red-600';
+    default: return 'text-slate-100';
   }
 };
 
-const InfoItem = ({ label, value, status }: { label: string; value: string; status?: &apos;safe&apos; | &apos;dangerous&apos; }) => (
+const InfoItem = ({ label, value, status }: { label: string; value: string; status?: 'safe' | 'dangerous' }) => (
   <p className="text-sm text-slate-400">
     {label}: 
-    <span className={`font-medium ml-1 ${status === &apos;safe&apos; ? &apos;text-green-400&apos; : status === &apos;dangerous&apos; ? &apos;text-red-400&apos; : &apos;text-slate-100&apos;}`}>
+    <span className={`font-medium ml-1 ${status === 'safe' ? 'text-green-400' : status === 'dangerous' ? 'text-red-400' : 'text-slate-100'}`}>
       {value}
     </span>
   </p>
@@ -346,14 +346,14 @@ const InfoItem = ({ label, value, status }: { label: string; value: string; stat
 
 const formatSourceName = (source: string) => {
   // Simple formatter, can be expanded
-  return source.replace(/([A-Z])/g, &apos; $1&apos;).replace(/^./, (str) => str.toUpperCase());
+  return source.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 };
 
 // Error state UI with better formatting
 const ErrorDisplay = ({ message, onClose }: { message: string, onClose: () => void }) => {
-  const formattedMessage = message.includes(&apos;Invalid URL&apos;) 
+  const formattedMessage = message.includes('Invalid URL') 
     ? message 
-    : &apos;Analysis Error: &apos; + message;
+    : 'Analysis Error: ' + message;
     
   return (
     <Card className="mt-6 border-red-500/50">
