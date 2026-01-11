@@ -143,7 +143,7 @@ export default function FeaturesPage() {
               <div className="p-8 md:p-12">
                 <h2 className="mb-6 text-3xl font-bold text-slate-100">Enterprise Solutions</h2>
                 <p className="mb-6 text-slate-400">
-                  Take your organization's security to the next level with our enterprise-grade features designed for businesses that require maximum protection.
+                  Take your organization&apos;s security to the next level with our enterprise-grade features designed for businesses that require maximum protection.
                 </p>
                 <div className="mb-8 space-y-4">
                   {enterpriseFeatures.map((feature, index) => (

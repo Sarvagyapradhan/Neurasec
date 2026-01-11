@@ -34,7 +34,7 @@ export default function Home() {
     }
   }, [isAuthenticated, loading, router]);
 
-  // Don't render landing page content if we're authenticated or still checking auth status
+  // Don&apos;t render landing page content if we&apos;re authenticated or still checking auth status
   if (loading || isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
@@ -246,7 +246,7 @@ export default function Home() {
                       Powerful Protection
                     </h3>
                     <p className="mt-2 text-slate-400">
-                      Our intelligent security platform protects against today's most sophisticated threats
+                      Our intelligent security platform protects against today&apos;s most sophisticated threats
                     </p>
                   </div>
                   <div className="rounded-lg bg-slate-900 p-6 border border-slate-800">

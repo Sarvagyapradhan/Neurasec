@@ -1,13 +1,13 @@
-'use client';
+&apos;use client&apos;;
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
-import { AlertCircle, Info, Check } from 'lucide-react';
+import { useState } from &apos;react&apos;;
+import Link from &apos;next/link&apos;;
+import { useRouter } from &apos;next/navigation&apos;;
+import { Button } from &apos;@/components/ui/button&apos;;
+import { Input } from &apos;@/components/ui/input&apos;;
+import { Label } from &apos;@/components/ui/label&apos;;
+import { useToast } from &apos;@/components/ui/use-toast&apos;;
+import { AlertCircle, Info, Check } from &apos;lucide-react&apos;;
 import {
   Card,
   CardContent,
@@ -15,72 +15,72 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from &apos;@/components/ui/card&apos;;
 
 type FieldError = {
-  field: 'username' | 'email' | 'password' | 'confirmPassword' | 'general';
+  field: &apos;username&apos; | &apos;email&apos; | &apos;password&apos; | &apos;confirmPassword&apos; | &apos;general&apos;;
   message: string;
 };
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [username, setUsername] = useState(&apos;&apos;);
+  const [email, setEmail] = useState(&apos;&apos;);
+  const [password, setPassword] = useState(&apos;&apos;);
+  const [confirmPassword, setConfirmPassword] = useState(&apos;&apos;);
   const [errors, setErrors] = useState<FieldError[]>([]);
-  const [generalError, setGeneralError] = useState('');
+  const [generalError, setGeneralError] = useState(&apos;&apos;);
   const [success, setSuccess] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
 
-  const clearFieldError = (field: FieldError['field']) => {
+  const clearFieldError = (field: FieldError[&apos;field&apos;]) => {
     setErrors(errors.filter(error => error.field !== field));
   };
 
-  const handleInputChange = (field: FieldError['field'], value: string) => {
+  const handleInputChange = (field: FieldError[&apos;field&apos;], value: string) => {
     switch (field) {
-      case 'username':
+      case &apos;username&apos;:
         setUsername(value);
         break;
-      case 'email':
+      case &apos;email&apos;:
         setEmail(value);
         break;
-      case 'password':
+      case &apos;password&apos;:
         setPassword(value);
         break;
-      case 'confirmPassword':
+      case &apos;confirmPassword&apos;:
         setConfirmPassword(value);
         break;
     }
     clearFieldError(field);
-    if (generalError) setGeneralError('');
+    if (generalError) setGeneralError(&apos;&apos;);
   };
 
   const validateForm = (): boolean => {
     const newErrors: FieldError[] = [];
     
     if (!username.trim()) {
-      newErrors.push({ field: 'username', message: 'Username is required' });
+      newErrors.push({ field: &apos;username&apos;, message: &apos;Username is required&apos; });
     } else if (username.length < 3) {
-      newErrors.push({ field: 'username', message: 'Username must be at least 3 characters' });
+      newErrors.push({ field: &apos;username&apos;, message: &apos;Username must be at least 3 characters&apos; });
     }
     
     if (!email.trim()) {
-      newErrors.push({ field: 'email', message: 'Email is required' });
+      newErrors.push({ field: &apos;email&apos;, message: &apos;Email is required&apos; });
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.push({ field: 'email', message: 'Please enter a valid email address' });
+      newErrors.push({ field: &apos;email&apos;, message: &apos;Please enter a valid email address&apos; });
     }
     
     if (!password) {
-      newErrors.push({ field: 'password', message: 'Password is required' });
+      newErrors.push({ field: &apos;password&apos;, message: &apos;Password is required&apos; });
     } else if (password.length < 8) {
-      newErrors.push({ field: 'password', message: 'Password must be at least 8 characters' });
+      newErrors.push({ field: &apos;password&apos;, message: &apos;Password must be at least 8 characters&apos; });
     }
     
     if (password !== confirmPassword) {
-      newErrors.push({ field: 'confirmPassword', message: 'Passwords do not match' });
+      newErrors.push({ field: &apos;confirmPassword&apos;, message: &apos;Passwords do not match&apos; });
     }
     
     setErrors(newErrors);
@@ -95,13 +95,13 @@ export default function SignupPage() {
     }
     
     setLoading(true);
-    setGeneralError('');
+    setGeneralError(&apos;&apos;);
     
     try {
-      const response = await fetch('/api/auth/register/', {
-        method: 'POST',
+      const response = await fetch(&apos;/api/auth/register/&apos;, {
+        method: &apos;POST&apos;,
         headers: {
-          'Content-Type': 'application/json',
+          &apos;Content-Type&apos;: &apos;application/json&apos;,
         },
         body: JSON.stringify({
           username,
@@ -114,15 +114,15 @@ export default function SignupPage() {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Registration failed:', data);
+        console.error(&apos;Registration failed:&apos;, data);
         
         // Handle field-specific errors
         if (data.field) {
           setErrors([...errors.filter(e => e.field !== data.field), 
-            { field: data.field as FieldError['field'], message: data.error }
+            { field: data.field as FieldError[&apos;field&apos;], message: data.error }
           ]);
         } else {
-          setGeneralError(data.error || 'Registration failed. Please try again.');
+          setGeneralError(data.error || &apos;Registration failed. Please try again.&apos;);
         }
         
         toast({
@@ -148,8 +148,8 @@ export default function SignupPage() {
         }, 3000);
       }
     } catch (err) {
-      console.error('Fetch error:', err);
-      setGeneralError('Network error. Please check your connection and try again.');
+      console.error(&apos;Fetch error:&apos;, err);
+      setGeneralError(&apos;Network error. Please check your connection and try again.&apos;);
       
       toast({
         variant: "destructive",
@@ -161,7 +161,7 @@ export default function SignupPage() {
     }
   };
 
-  const getErrorForField = (field: FieldError['field']): string | null => {
+  const getErrorForField = (field: FieldError[&apos;field&apos;]): string | null => {
     const error = errors.find(e => e.field === field);
     return error ? error.message : null;
   };
@@ -182,7 +182,7 @@ export default function SignupPage() {
               <Check size={20} className="flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium">Registration successful!</p>
-                <p className="text-sm mt-1">We've sent a verification code to your email. Please check your inbox (and spam folder).</p>
+                <p className="text-sm mt-1">We&apos;ve sent a verification code to your email. Please check your inbox (and spam folder).</p>
                 <p className="text-sm mt-2">Redirecting to verification page...</p>
               </div>
             </div>
@@ -191,7 +191,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="username" 
-                  className={getErrorForField('username') ? 'text-red-500' : 'text-slate-200'}
+                  className={getErrorForField(&apos;username&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
                 >
                   Username
                 </Label>
@@ -201,23 +201,23 @@ export default function SignupPage() {
                     placeholder="Choose a username"
                     type="text"
                     value={username}
-                    onChange={(e) => handleInputChange('username', e.target.value)}
-                    className={getErrorForField('username') 
-                      ? 'border-red-500 focus-visible:ring-red-500' 
-                      : 'border-slate-700 bg-slate-800/50 text-white'
+                    onChange={(e) => handleInputChange(&apos;username&apos;, e.target.value)}
+                    className={getErrorForField(&apos;username&apos;) 
+                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
+                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
                     }
                     disabled={loading}
                   />
-                  {getErrorForField('username') && (
+                  {getErrorForField(&apos;username&apos;) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField('username') && (
+                {getErrorForField(&apos;username&apos;) && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField('username')}</span>
+                    <span>{getErrorForField(&apos;username&apos;)}</span>
                   </div>
                 )}
               </div>
@@ -225,7 +225,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="email" 
-                  className={getErrorForField('email') ? 'text-red-500' : 'text-slate-200'}
+                  className={getErrorForField(&apos;email&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
                 >
                   Email
                 </Label>
@@ -235,23 +235,23 @@ export default function SignupPage() {
                     placeholder="your@email.com"
                     type="email"
                     value={email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={getErrorForField('email') 
-                      ? 'border-red-500 focus-visible:ring-red-500' 
-                      : 'border-slate-700 bg-slate-800/50 text-white'
+                    onChange={(e) => handleInputChange(&apos;email&apos;, e.target.value)}
+                    className={getErrorForField(&apos;email&apos;) 
+                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
+                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
                     }
                     disabled={loading}
                   />
-                  {getErrorForField('email') && (
+                  {getErrorForField(&apos;email&apos;) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField('email') && (
+                {getErrorForField(&apos;email&apos;) && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField('email')}</span>
+                    <span>{getErrorForField(&apos;email&apos;)}</span>
                   </div>
                 )}
               </div>
@@ -259,7 +259,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="password" 
-                  className={getErrorForField('password') ? 'text-red-500' : 'text-slate-200'}
+                  className={getErrorForField(&apos;password&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
                 >
                   Password
                 </Label>
@@ -269,23 +269,23 @@ export default function SignupPage() {
                     placeholder="Create a password"
                     type="password"
                     value={password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    className={getErrorForField('password') 
-                      ? 'border-red-500 focus-visible:ring-red-500' 
-                      : 'border-slate-700 bg-slate-800/50 text-white'
+                    onChange={(e) => handleInputChange(&apos;password&apos;, e.target.value)}
+                    className={getErrorForField(&apos;password&apos;) 
+                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
+                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
                     }
                     disabled={loading}
                   />
-                  {getErrorForField('password') && (
+                  {getErrorForField(&apos;password&apos;) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField('password') && (
+                {getErrorForField(&apos;password&apos;) && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField('password')}</span>
+                    <span>{getErrorForField(&apos;password&apos;)}</span>
                   </div>
                 )}
               </div>
@@ -293,7 +293,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label 
                   htmlFor="confirmPassword" 
-                  className={getErrorForField('confirmPassword') ? 'text-red-500' : 'text-slate-200'}
+                  className={getErrorForField(&apos;confirmPassword&apos;) ? &apos;text-red-500&apos; : &apos;text-slate-200&apos;}
                 >
                   Confirm Password
                 </Label>
@@ -303,23 +303,23 @@ export default function SignupPage() {
                     placeholder="Confirm your password"
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className={getErrorForField('confirmPassword') 
-                      ? 'border-red-500 focus-visible:ring-red-500' 
-                      : 'border-slate-700 bg-slate-800/50 text-white'
+                    onChange={(e) => handleInputChange(&apos;confirmPassword&apos;, e.target.value)}
+                    className={getErrorForField(&apos;confirmPassword&apos;) 
+                      ? &apos;border-red-500 focus-visible:ring-red-500&apos; 
+                      : &apos;border-slate-700 bg-slate-800/50 text-white&apos;
                     }
                     disabled={loading}
                   />
-                  {getErrorForField('confirmPassword') && (
+                  {getErrorForField(&apos;confirmPassword&apos;) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500">
                       <AlertCircle size={18} />
                     </div>
                   )}
                 </div>
-                {getErrorForField('confirmPassword') && (
+                {getErrorForField(&apos;confirmPassword&apos;) && (
                   <div className="text-sm text-red-500 flex gap-1 items-start mt-1">
                     <Info size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{getErrorForField('confirmPassword')}</span>
+                    <span>{getErrorForField(&apos;confirmPassword&apos;)}</span>
                   </div>
                 )}
               </div>
@@ -334,7 +334,7 @@ export default function SignupPage() {
               )}
               
               <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" type="submit" disabled={loading}>
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading ? &apos;Creating account...&apos; : &apos;Create account&apos;}
               </Button>
               
               <p className="text-xs text-center text-slate-400 mt-3">
@@ -345,7 +345,7 @@ export default function SignupPage() {
         </CardContent>
         <CardFooter className="flex justify-center">
           <div className="text-sm text-slate-400">
-            Already have an account?{' '}
+            Already have an account?{&apos; &apos;}
             <Link href="/login" className="text-blue-400 hover:text-blue-300 hover:underline">
               Sign in
             </Link>

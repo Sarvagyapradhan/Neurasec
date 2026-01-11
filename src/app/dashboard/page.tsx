@@ -185,15 +185,15 @@ export default function DashboardPage() {
   useEffect(() => {
     console.log("Dashboard auth status:", { isAuthenticated, loading });
     
-    // For demo purposes, let's assume we have auth if there's a token in either place
+    // For demo purposes, let&apos;s assume we have auth if there&apos;s a token in either place
     const hasToken = !!getCookie("auth_token") || !!localStorage.getItem("auth_token");
     console.log("Token found:", hasToken);
     
-    // Redirect if we're not loading, not authenticated, and have no token
+    // Redirect if we&apos;re not loading, not authenticated, and have no token
     if (!loading) {
       setAuthChecked(true);
       if (!isAuthenticated && !hasToken) {
-        router.push('/login');
+        router.push(&apos;/login&apos;);
       }
     }
 
@@ -202,7 +202,7 @@ export default function DashboardPage() {
         if (loading) {
             console.warn("Dashboard loading timed out, forcing check");
             if (!isAuthenticated && !hasToken) {
-                router.push('/login');
+                router.push(&apos;/login&apos;);
             } else {
                 // If we have token/auth but loading stuck, show content
                 setAuthChecked(true); 
@@ -242,8 +242,8 @@ export default function DashboardPage() {
             transition={{ duration: 0.5 }}
             className="mb-4 md:mb-0"
           >
-            <h1 className="text-3xl font-bold text-slate-100">Welcome back, {user?.username || user?.email?.split('@')[0] || "User"}</h1>
-            <p className="text-slate-400 mt-1">Here's your security overview for today</p>
+            <h1 className="text-3xl font-bold text-slate-100">Welcome back, {user?.username || user?.email?.split(&apos;@&apos;)[0] || "User"}</h1>
+            <p className="text-slate-400 mt-1">Here&apos;s your security overview for today</p>
           </motion.div>
           <div className="flex items-center space-x-3">
             <div className="relative">
@@ -428,9 +428,9 @@ export default function DashboardPage() {
                       className="flex items-start p-3 rounded-lg border border-slate-800 bg-slate-900/50 hover:bg-slate-900 transition-colors"
                     >
                       <div className={`mr-3 p-2 rounded-full 
-                        ${activity.status === 'success' ? 'bg-green-500/10 text-green-500' : 
-                          activity.status === 'warning' ? 'bg-yellow-500/10 text-yellow-500' : 
-                          'bg-blue-500/10 text-blue-500'}`}>
+                        ${activity.status === &apos;success&apos; ? &apos;bg-green-500/10 text-green-500&apos; : 
+                          activity.status === &apos;warning&apos; ? &apos;bg-yellow-500/10 text-yellow-500&apos; : 
+                          &apos;bg-blue-500/10 text-blue-500&apos;}`}>
                         <activity.icon className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
