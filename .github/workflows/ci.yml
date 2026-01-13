@@ -1,19 +1,15 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: 
-      - "Dev" # Run checks when pushing to Dev branch for early feedback
-      - "main" # Deploy to Vercel when code is pushed to main
+    branches: [ "Dev" ] # Run checks when pushing to Dev branch for early feedback
   pull_request:
-    branches: [ "main" ] # Run checks when opening a PR from Dev to main (Safety Gate)
+    branches: [ "main" ] # Run checks when opening a PR to main (Safety Gate)
 
 jobs:
   quality-check:
     name: Quality & Build Check
     runs-on: ubuntu-latest
-    # Only run on PRs or pushes to Dev branch
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/Dev'
 
     steps:
     - name: Checkout code
@@ -28,10 +24,10 @@ jobs:
     - name: Restore Next.js cache
       uses: actions/cache@v4
       with:
-        path:
+        path: |
           .next/cache
         key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
-        restore-keys:
+        restore-keys: |
           ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
     - name: Install dependencies
@@ -58,41 +54,3 @@ jobs:
         EMAIL_PORT: "587"
         EMAIL_HOST_USER: "mock@user.com"
         EMAIL_PASSWORD: "mock-password"
-
-  deploy:
-    name: Deploy to Vercel
-    runs-on: ubuntu-latest
-    # Only run when code is pushed to main branch (after PR merge)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [] # No dependencies - deploy independently
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-
-    - name: Install Vercel CLI
-      run: npm install --global vercel@latest
-
-    - name: Pull Vercel Environment Information
-      run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      env:
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-    - name: Build Project Artifacts
-      run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      env:
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-    - name: Deploy Project Artifacts to Vercel
-      run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-      env:
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
